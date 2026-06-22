@@ -1,46 +1,71 @@
-def visualize_subgraph(graph, nodes, path=None):
+def graph_retriever(graph, vector_store, query, max_hops=2, top_k=10):
 
-    import matplotlib.pyplot as plt
-    import networkx as nx
+    # ============================
+    # Step 1: Vector search
+    # ============================
+    docs = vector_store.similarity_search(query, k=top_k)
 
-    # ✅ Step 1: Expand nodes (add neighbors)
-    expanded_nodes = set(nodes)
+    start_nodes = [d.metadata["reference"] for d in docs]
+    print("Start Nodes:", start_nodes)
 
-    for n in nodes:
-        neighbors = list(graph.neighbors(n))
+    visited = set()
+    scores = {}
+    path = []
+
+    queue = [(node, 0) for node in start_nodes]
+
+    # ============================
+    # Step 2: Initialize scores
+    # ============================
+    for node in start_nodes:
+        if node in graph.nodes():
+            scores[node] = graph.nodes[node].get("pagerank", 0)
+
+    # ============================
+    # Step 3: Graph traversal
+    # ============================
+    while queue:
+        current, hop = queue.pop(0)
+
+        if hop >= max_hops or current in visited:
+            continue
+
+        visited.add(current)
+        path.append(current)
+
+        for neighbor in graph.neighbors(current):
+
+            pr = graph.nodes[neighbor].get("pagerank", 0)
+
+            # ✅ Improved scoring (balanced)
+            score = (pr * 0.7) + (1 / (hop + 1)) * 0.3
+
+            if neighbor not in scores or score > scores[neighbor]:
+                scores[neighbor] = score
+
+            queue.append((neighbor, hop + 1))
+
+    # ============================
+    # Step 4: Select top nodes
+    # ============================
+    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    top_nodes = [n for n, _ in ranked[:top_k]]
+
+    # ============================
+    # Step 5: 🔥 EXPAND GRAPH (IMPORTANT FIX)
+    # ============================
+    expanded_nodes = set(top_nodes)
+
+    for node in top_nodes:
+        neighbors = list(graph.neighbors(node))
         expanded_nodes.update(neighbors)
 
-    # ✅ Step 2: Create subgraph with expanded nodes
-    subgraph = graph.subgraph(expanded_nodes)
+        # optional 2-hop expansion
+        for n1 in neighbors:
+            expanded_nodes.update(graph.neighbors(n1))
 
-    plt.figure(figsize=(8, 6))
+    final_nodes = list(expanded_nodes)
 
-    pos = nx.spring_layout(subgraph, seed=42)
+    print("Final Nodes:", final_nodes)
 
-    # Labels
-    labels = {node: node.split('.')[-2][:6] for node in subgraph.nodes()}
-
-    nx.draw(
-        subgraph,
-        pos,
-        labels=labels,
-        node_color="lightblue",
-        node_size=2000,
-        font_size=8,
-        edge_color="gray"
-    )
-
-    # Edge labels
-    edge_labels = nx.get_edge_attributes(subgraph, 'relation')
-    nx.draw_networkx_edge_labels(subgraph, pos, edge_labels=edge_labels, font_size=6)
-
-    # Highlight main nodes
-    nx.draw_networkx_nodes(
-        subgraph,
-        pos,
-        nodelist=nodes,
-        node_color="orange"
-    )
-
-    plt.title("Query Relevant Subgraph (with connections)")
-    plt.show()
+    return final_nodes, path
