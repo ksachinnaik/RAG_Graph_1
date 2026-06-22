@@ -1,39 +1,61 @@
-import re
+def graph_retriever(graph, vector_store, query, max_hops=2, top_k=5):
 
-triples = []
+    # 🔹 Step 1: Vector retrieval
+    docs = vector_store.similarity_search(query, k=top_k)
 
-# 🔹 Step 1: collect all valid references (nodes)
-all_refs = set()
+    # ✅ FIX: use reference (NOT doc_id)
+    start_nodes = [d.metadata["reference"] for d in docs]
 
-for r in rows:
-    if r["reference"]:
-        all_refs.add(r["reference"])
+    print("Start Nodes:", start_nodes)
 
-# 🔹 Step 2: build RDF triples
-for r in rows:
-    parent = r["reference"]   # 🔥 Parent node
-    content = r["content"]
+    visited = set()
+    scores = {}
+    path = []
 
-    if not parent:
-        continue
+    queue = [(node, 0) for node in start_nodes]
 
-    # 🔥 Extract BOTH:
-    # doc:wiki:Temp_Import.xxx.WebHome
-    # doc:Temp_Import.xxx.WebHome
-    links = re.findall(r"doc:(?:wiki:)?([A-Za-z0-9._-]+)", content)
+    # 🔹 Initialize scores using PageRank
+    for node in start_nodes:
+        if node in graph.nodes:
+            scores[node] = graph.nodes[node].get("pagerank", 0)
 
-    for child in links:
-        # child = Temp_Import.xxx.WebHome
+    # 🔹 Step 2: Graph traversal (multi-hop)
+    while queue:
+        current, hop = queue.pop(0)
 
-        if child in all_refs:   # only connect known nodes
-            if parent != child:  # avoid self-loop
+        if hop >= max_hops or current in visited:
+            continue
 
-                triples.append((parent, "links_to", child))
+        visited.add(current)
+        path.append(current)
 
-# 🔹 Output
-print("Total Nodes:", len(all_refs))
-print("Total Triples:", len(triples))
+        for neighbor in graph.neighbors(current):
 
-print("\nSample Triples:")
-for t in triples[:10]:
-    print(t)
+            pr = graph.nodes[neighbor].get("pagerank", 0)
+
+            # scoring: PageRank + hop penalty
+            score = pr / (hop + 1)
+
+            if neighbor not in scores or score > scores[neighbor]:
+                scores[neighbor] = score
+
+            queue.append((neighbor, hop + 1))
+
+    # 🔹 Step 3: Ranking
+    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    top_nodes = [n for n, _ in ranked[:top_k]]
+
+    print("Top Nodes:", top_nodes)
+
+    return top_nodes, path
+--------------------------------------------->
+
+
+context = ""
+
+for node in top_nodes:
+    context += G.nodes[node]["content"] + "\n\n"
+
+response = llm.invoke(f"Answer using context:\n{context}\n\nQuestion: your query")
+
+print(response.content)
