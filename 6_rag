@@ -1,42 +1,44 @@
 # ============================
-# Cell 5: RDF Triple Extraction
+# Graph Visualization (NetworkX)
 # ============================
 
-import re
+import networkx as nx
+import matplotlib.pyplot as plt
 
-triples = []
+# Step 1: Create graph
+G = nx.DiGraph()
 
-# Step 1: Loop through each XML (parent)
-for r in rows:
+# Step 2: Add nodes (parent + child)
+for node in all_nodes:
+    G.add_node(node)
 
-    parent = r["reference"]   # ✅ Parent node
-    content = r["content"]
-
-    if not parent:
-        continue
-
-    # Step 2: Extract child links from content
-    links = re.findall(r"doc:(?:wiki:)?([A-Za-z0-9._-]+)", content)
-
-    # Step 3: Create edges (parent → child)
-    for child in links:
-
-        if parent != child:   # avoid self-loop
-            triples.append((parent, "links_to", child))
-
-
-# Step 4: Build ALL nodes (parents + children)
-all_nodes = set()
-
+# Step 3: Add edges
 for s, p, o in triples:
-    all_nodes.add(s)
-    all_nodes.add(o)
+    G.add_edge(s, o, relation=p)
 
-# Step 5: Print results
-print("Total Parent Nodes:", len(set([r["reference"] for r in rows if r["reference"]])))
-print("Total Graph Nodes:", len(all_nodes))
-print("Total Triples (Edges):", len(triples))
+print("Nodes:", len(G.nodes()))
+print("Edges:", len(G.edges()))
 
-print("\nSample Triples:")
-for t in triples[:10]:
-    print(t)
+# Step 4: Draw graph
+plt.figure(figsize=(12, 8))
+
+pos = nx.spring_layout(G, seed=42)   # better layout
+
+# Short labels for readability
+labels = {node: node.split('.')[-2][:6] for node in G.nodes()}
+
+nx.draw(
+    G,
+    pos,
+    labels=labels,
+    node_size=2000,
+    node_color="lightblue",
+    font_size=10
+)
+
+# Draw edge labels
+edge_labels = nx.get_edge_attributes(G, 'relation')
+nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+
+plt.title("RDF Graph Visualization")
+plt.show()
