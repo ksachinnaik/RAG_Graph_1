@@ -1,71 +1,44 @@
-def graph_retriever(graph, vector_store, query, max_hops=2, top_k=10):
+class GraphRAG:
 
-    # ============================
-    # Step 1: Vector search
-    # ============================
-    docs = vector_store.similarity_search(query, k=top_k)
+    def __init__(self, graph, vector_store, llm):
+        self.graph = graph
+        self.vector_store = vector_store
+        self.llm = llm
 
-    start_nodes = [d.metadata["reference"] for d in docs]
-    print("Start Nodes:", start_nodes)
+    def answer(self, query):
 
-    visited = set()
-    scores = {}
-    path = []
+        # Step 1: Retrieve nodes
+        nodes, path = graph_retriever(
+            self.graph,
+            self.vector_store,
+            query
+        )
 
-    queue = [(node, 0) for node in start_nodes]
+        print("Retrieved Nodes:", nodes)
 
-    # ============================
-    # Step 2: Initialize scores
-    # ============================
-    for node in start_nodes:
-        if node in graph.nodes():
-            scores[node] = graph.nodes[node].get("pagerank", 0)
+        # Step 2: Visualize subgraph
+        visualize_subgraph(self.graph, nodes, path)
 
-    # ============================
-    # Step 3: Graph traversal
-    # ============================
-    while queue:
-        current, hop = queue.pop(0)
+        # Step 3: Build context
+        context = ""
 
-        if hop >= max_hops or current in visited:
-            continue
+        for n in nodes:
+            content = self.graph.nodes[n].get("content", "")
+            if content:
+                context += "\n" + content
 
-        visited.add(current)
-        path.append(current)
+        # Step 4: Prompt
+        prompt = f"""
+Answer the question using the context below.
 
-        for neighbor in graph.neighbors(current):
+Context:
+{context}
 
-            pr = graph.nodes[neighbor].get("pagerank", 0)
+Question:
+{query}
+"""
 
-            # ✅ Improved scoring (balanced)
-            score = (pr * 0.7) + (1 / (hop + 1)) * 0.3
+        # Step 5: LLM response
+        response = self.llm.invoke(prompt)
 
-            if neighbor not in scores or score > scores[neighbor]:
-                scores[neighbor] = score
-
-            queue.append((neighbor, hop + 1))
-
-    # ============================
-    # Step 4: Select top nodes
-    # ============================
-    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    top_nodes = [n for n, _ in ranked[:top_k]]
-
-    # ============================
-    # Step 5: 🔥 EXPAND GRAPH (IMPORTANT FIX)
-    # ============================
-    expanded_nodes = set(top_nodes)
-
-    for node in top_nodes:
-        neighbors = list(graph.neighbors(node))
-        expanded_nodes.update(neighbors)
-
-        # optional 2-hop expansion
-        for n1 in neighbors:
-            expanded_nodes.update(graph.neighbors(n1))
-
-    final_nodes = list(expanded_nodes)
-
-    print("Final Nodes:", final_nodes)
-
-    return final_nodes, path
+        return response.content
