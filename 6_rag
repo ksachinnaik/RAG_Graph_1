@@ -1,0 +1,33 @@
+import re
+
+triples = []
+
+# 🔹 Step 1: collect all valid references
+all_refs = set()
+
+for r in rows:
+    if r["reference"]:
+        all_refs.add(r["reference"])
+
+# 🔹 Step 2: extract doc links from content
+for r in rows:
+    src_ref = r["reference"]   # 🔥 Node = reference
+    content = r["content"]
+
+    if not src_ref:
+        continue
+
+    # extract links
+    matches = re.findall(r"doc:(?:wiki:)?([A-Za-z0-9._-]+)", content)
+
+    for m in matches:
+        # m = Temp_Import.xxx.WebHome
+
+        if m in all_refs:
+            target_ref = m
+
+            if src_ref != target_ref:
+                triples.append((src_ref, "links_to", target_ref))
+
+print("Triples:", triples[:10])
+print("Total Triples:", len(triples))
