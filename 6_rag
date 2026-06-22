@@ -1,51 +1,47 @@
-def graph_retriever(graph, vector_store, query, max_hops=2, top_k=5):
+def visualize_graph(graph, path=None):
 
-    # Step 1: Vector retrieval
-    docs = vector_store.similarity_search(query, k=top_k)
+    plt.figure(figsize=(10, 7))
 
-    # ✅ FIXED: use node (not reference)
-    start_nodes = [d.metadata["node"] for d in docs]
+    pos = nx.spring_layout(graph, seed=42)
 
-    print("Start Nodes:", start_nodes)
+    # Short labels
+    labels = {node: node.split('.')[-2][:6] for node in graph.nodes()}
 
-    visited = set()
-    scores = {}
-    path = []
+    nx.draw(
+        graph,
+        pos,
+        labels=labels,
+        node_color="lightblue",
+        node_size=2000,
+        font_size=8
+    )
 
-    queue = [(node, 0) for node in start_nodes]
+    # Edge labels
+    edge_labels = nx.get_edge_attributes(graph, 'relation')
+    nx.draw_networkx_edge_labels(graph, pos, edge_labels=edge_labels, font_size=6)
 
-    # Initialize scores using PageRank
-    for node in start_nodes:
-        if node in graph.nodes:
-            scores[node] = graph.nodes[node].get("pagerank", 0)
+    # Highlight traversal path
+    if path and len(path) > 1:
 
-    # Step 2: Graph traversal (multi-hop)
-    while queue:
-        current, hop = queue.pop(0)
+        edges = []
+        for i in range(len(path)-1):
+            if graph.has_edge(path[i], path[i+1]):
+                edges.append((path[i], path[i+1]))
 
-        if hop >= max_hops or current in visited:
-            continue
+        nx.draw_networkx_edges(
+            graph,
+            pos,
+            edgelist=edges,
+            edge_color="red",
+            width=3
+        )
 
-        visited.add(current)
-        path.append(current)
+        nx.draw_networkx_nodes(
+            graph,
+            pos,
+            nodelist=path,
+            node_color="orange"
+        )
 
-        for neighbor in graph.neighbors(current):
-
-            pr = graph.nodes[neighbor].get("pagerank", 0)
-
-            # scoring: PageRank + hop penalty
-            score = pr / (hop + 1)
-
-            if neighbor not in scores or score > scores[neighbor]:
-                scores[neighbor] = score
-
-            queue.append((neighbor, hop + 1))
-
-    # Step 3: Ranking
-    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-
-    top_nodes = [n for n, _ in ranked[:top_k]]
-
-    print("Top Nodes:", top_nodes)
-
-    return top_nodes, path
+    plt.title("RDF Graph (Red = Traversal Path)")
+    plt.show()
