@@ -1,40 +1,51 @@
-# ============================
-# Cell 8: Embeddings + Vector Store (FINAL FIXED)
-# ============================
+def graph_retriever(graph, vector_store, query, max_hops=2, top_k=5):
 
-from langchain_community.embeddings import DatabricksEmbeddings
-from langchain_community.vectorstores import FAISS
-from langchain_core.documents import Document
+    # Step 1: Vector retrieval
+    docs = vector_store.similarity_search(query, k=top_k)
 
-# Step 1: Embedding model
-embedding_model = DatabricksEmbeddings(
-    endpoint="knwbt_text-embedding-3-small"
-)
+    # ✅ FIXED: use node (not reference)
+    start_nodes = [d.metadata["node"] for d in docs]
 
-# Step 2: Build content lookup (only parents have content)
-content_lookup = {
-    r["reference"]: r["content"]
-    for r in rows
-    if r["reference"]
-}
+    print("Start Nodes:", start_nodes)
 
-documents = []
+    visited = set()
+    scores = {}
+    path = []
 
-# Step 3: Use ALL graph nodes
-for node in G.nodes():
+    queue = [(node, 0) for node in start_nodes]
 
-    # ✅ If content exists → use it
-    # ✅ Else → fallback to node name (IMPORTANT)
-    content = content_lookup.get(node, node)
+    # Initialize scores using PageRank
+    for node in start_nodes:
+        if node in graph.nodes:
+            scores[node] = graph.nodes[node].get("pagerank", 0)
 
-    documents.append(
-        Document(
-            page_content=content,
-            metadata={"node": node}
-        )
-    )
+    # Step 2: Graph traversal (multi-hop)
+    while queue:
+        current, hop = queue.pop(0)
 
-# Step 4: Create vector store
-vector_store = FAISS.from_documents(documents, embedding_model)
+        if hop >= max_hops or current in visited:
+            continue
 
-print("Vector store ready")
+        visited.add(current)
+        path.append(current)
+
+        for neighbor in graph.neighbors(current):
+
+            pr = graph.nodes[neighbor].get("pagerank", 0)
+
+            # scoring: PageRank + hop penalty
+            score = pr / (hop + 1)
+
+            if neighbor not in scores or score > scores[neighbor]:
+                scores[neighbor] = score
+
+            queue.append((neighbor, hop + 1))
+
+    # Step 3: Ranking
+    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+
+    top_nodes = [n for n, _ in ranked[:top_k]]
+
+    print("Top Nodes:", top_nodes)
+
+    return top_nodes, path
