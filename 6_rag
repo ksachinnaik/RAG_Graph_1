@@ -1,24 +1,31 @@
 # ============================
-# Cell 6: Graph Construction (FIXED)
+# Cell 8: Embeddings (FIXED)
 # ============================
 
-import networkx as nx
+from langchain_community.embeddings import DatabricksEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain.schema import Document
 
-# ✅ Use Directed Graph (IMPORTANT)
-G = nx.DiGraph()
+# Step 1: Embedding model
+embedding_model = DatabricksEmbeddings(
+    endpoint="knwbt_text-embedding-3-small"
+)
 
-# Step 1: Add ALL nodes (parent + child)
-for node in all_nodes:
-    G.add_node(node)
+documents = []
 
-# Step 2: Add edges from triples
-for s, p, o in triples:
-    G.add_edge(s, o, relation=p)
+# ✅ Step 2: Use GRAPH nodes (NOT rows)
+for node in G.nodes():
 
-# Step 3: Print stats
-print("Nodes:", len(G.nodes()))
-print("Edges:", len(G.edges()))
+    content = G.nodes[node].get("content", "")
 
-print("\nSample Edges:")
-for edge in list(G.edges())[:10]:
-    print(edge)
+    documents.append(
+        Document(
+            page_content=content,
+            metadata={"node": node}
+        )
+    )
+
+# Step 3: Create vector store
+vector_store = FAISS.from_documents(documents, embedding_model)
+
+print("Vector store ready")
