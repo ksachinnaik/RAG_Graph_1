@@ -1,42 +1,39 @@
-def visualize_graph(graph, path=None):
+class GraphRAG:
 
-    plt.figure(figsize=(10, 7))
+    def __init__(self, graph, vector_store, llm):
+        self.graph = graph
+        self.vector_store = vector_store   # ✅ FIX
+        self.llm = llm
 
-    pos = nx.spring_layout(graph, seed=42)
+    def answer(self, query):
 
-    # 🔥 Short labels
-    labels = {node: node.split('.')[-2][:6] for node in graph.nodes()}
-
-    nx.draw(
-        graph,
-        pos,
-        labels=labels,
-        node_color="lightblue",
-        node_size=2000
-    )
-
-    # RDF edge labels
-    edge_labels = nx.get_edge_attributes(graph, 'relation')
-    nx.draw_networkx_edge_labels(graph, pos, edge_labels=edge_labels)
-
-    # Highlight traversal path
-    if path and len(path) > 1:
-        edges = list(zip(path, path[1:]))
-
-        nx.draw_networkx_edges(
-            graph,
-            pos,
-            edgelist=edges,
-            edge_color="red",
-            width=3
+        # 🔹 Step 1: Retrieve nodes using Graph + Vector
+        nodes, path = graph_retriever(
+            self.graph,
+            self.vector_store,
+            query
         )
 
-        nx.draw_networkx_nodes(
-            graph,
-            pos,
-            nodelist=path,
-            node_color="orange"
-        )
+        # 🔹 Step 2: Visualize graph traversal
+        visualize_graph(self.graph, path)
 
-    plt.title("RDF Graph (Red = Traversal Path)")
-    plt.show()
+        # 🔹 Step 3: Build context
+        context = ""
+        for n in nodes:
+            context += "\n" + self.graph.nodes[n]["content"]
+
+        # 🔹 Step 4: Prompt
+        prompt = f"""
+        Answer the question using the context below.
+
+        Context:
+        {context}
+
+        Question:
+        {query}
+        """
+
+        # 🔹 Step 5: LLM response
+        response = self.llm.invoke(prompt)
+
+        return response.content   # ✅ FIX
