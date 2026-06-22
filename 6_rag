@@ -1,22 +1,31 @@
 # ============================
-# Cell 8: Embeddings (FIXED)
+# Cell 8: Embeddings + Vector Store (FINAL FIXED)
 # ============================
 
 from langchain_community.embeddings import DatabricksEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 # Step 1: Embedding model
 embedding_model = DatabricksEmbeddings(
     endpoint="knwbt_text-embedding-3-small"
 )
 
+# Step 2: Build content lookup (only parents have content)
+content_lookup = {
+    r["reference"]: r["content"]
+    for r in rows
+    if r["reference"]
+}
+
 documents = []
 
-# ✅ Step 2: Use GRAPH nodes (NOT rows)
+# Step 3: Use ALL graph nodes
 for node in G.nodes():
 
-    content = G.nodes[node].get("content", "")
+    # ✅ If content exists → use it
+    # ✅ Else → fallback to node name (IMPORTANT)
+    content = content_lookup.get(node, node)
 
     documents.append(
         Document(
@@ -25,7 +34,7 @@ for node in G.nodes():
         )
     )
 
-# Step 3: Create vector store
+# Step 4: Create vector store
 vector_store = FAISS.from_documents(documents, embedding_model)
 
 print("Vector store ready")
