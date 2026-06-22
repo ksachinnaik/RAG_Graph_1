@@ -1,39 +1,42 @@
-class GraphRAG:
+# ============================
+# Cell 5: RDF Triple Extraction
+# ============================
 
-    def __init__(self, graph, vector_store, llm):
-        self.graph = graph
-        self.vector_store = vector_store   # ✅ FIX
-        self.llm = llm
+import re
 
-    def answer(self, query):
+triples = []
 
-        # 🔹 Step 1: Retrieve nodes using Graph + Vector
-        nodes, path = graph_retriever(
-            self.graph,
-            self.vector_store,
-            query
-        )
+# Step 1: Loop through each XML (parent)
+for r in rows:
 
-        # 🔹 Step 2: Visualize graph traversal
-        visualize_graph(self.graph, path)
+    parent = r["reference"]   # ✅ Parent node
+    content = r["content"]
 
-        # 🔹 Step 3: Build context
-        context = ""
-        for n in nodes:
-            context += "\n" + self.graph.nodes[n]["content"]
+    if not parent:
+        continue
 
-        # 🔹 Step 4: Prompt
-        prompt = f"""
-        Answer the question using the context below.
+    # Step 2: Extract child links from content
+    links = re.findall(r"doc:(?:wiki:)?([A-Za-z0-9._-]+)", content)
 
-        Context:
-        {context}
+    # Step 3: Create edges (parent → child)
+    for child in links:
 
-        Question:
-        {query}
-        """
+        if parent != child:   # avoid self-loop
+            triples.append((parent, "links_to", child))
 
-        # 🔹 Step 5: LLM response
-        response = self.llm.invoke(prompt)
 
-        return response.content   # ✅ FIX
+# Step 4: Build ALL nodes (parents + children)
+all_nodes = set()
+
+for s, p, o in triples:
+    all_nodes.add(s)
+    all_nodes.add(o)
+
+# Step 5: Print results
+print("Total Parent Nodes:", len(set([r["reference"] for r in rows if r["reference"]])))
+print("Total Graph Nodes:", len(all_nodes))
+print("Total Triples (Edges):", len(triples))
+
+print("\nSample Triples:")
+for t in triples[:10]:
+    print(t)
