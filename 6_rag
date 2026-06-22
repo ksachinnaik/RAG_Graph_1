@@ -2,32 +2,38 @@ import re
 
 triples = []
 
-# 🔹 Step 1: collect all valid references
+# 🔹 Step 1: collect all valid references (nodes)
 all_refs = set()
 
 for r in rows:
     if r["reference"]:
         all_refs.add(r["reference"])
 
-# 🔹 Step 2: extract doc links from content
+# 🔹 Step 2: build RDF triples
 for r in rows:
-    src_ref = r["reference"]   # 🔥 Node = reference
+    parent = r["reference"]   # 🔥 Parent node
     content = r["content"]
 
-    if not src_ref:
+    if not parent:
         continue
 
-    # extract links
-    matches = re.findall(r"doc:(?:wiki:)?([A-Za-z0-9._-]+)", content)
+    # 🔥 Extract BOTH:
+    # doc:wiki:Temp_Import.xxx.WebHome
+    # doc:Temp_Import.xxx.WebHome
+    links = re.findall(r"doc:(?:wiki:)?([A-Za-z0-9._-]+)", content)
 
-    for m in matches:
-        # m = Temp_Import.xxx.WebHome
+    for child in links:
+        # child = Temp_Import.xxx.WebHome
 
-        if m in all_refs:
-            target_ref = m
+        if child in all_refs:   # only connect known nodes
+            if parent != child:  # avoid self-loop
 
-            if src_ref != target_ref:
-                triples.append((src_ref, "links_to", target_ref))
+                triples.append((parent, "links_to", child))
 
-print("Triples:", triples[:10])
+# 🔹 Output
+print("Total Nodes:", len(all_refs))
 print("Total Triples:", len(triples))
+
+print("\nSample Triples:")
+for t in triples[:10]:
+    print(t)
