@@ -1,44 +1,24 @@
 # ============================
-# Graph Visualization (NetworkX)
+# Cell 6: Graph Construction (FIXED)
 # ============================
 
 import networkx as nx
-import matplotlib.pyplot as plt
 
-# Step 1: Create graph
+# ✅ Use Directed Graph (IMPORTANT)
 G = nx.DiGraph()
 
-# Step 2: Add nodes (parent + child)
+# Step 1: Add ALL nodes (parent + child)
 for node in all_nodes:
     G.add_node(node)
 
-# Step 3: Add edges
+# Step 2: Add edges from triples
 for s, p, o in triples:
     G.add_edge(s, o, relation=p)
 
+# Step 3: Print stats
 print("Nodes:", len(G.nodes()))
 print("Edges:", len(G.edges()))
 
-# Step 4: Draw graph
-plt.figure(figsize=(12, 8))
-
-pos = nx.spring_layout(G, seed=42)   # better layout
-
-# Short labels for readability
-labels = {node: node.split('.')[-2][:6] for node in G.nodes()}
-
-nx.draw(
-    G,
-    pos,
-    labels=labels,
-    node_size=2000,
-    node_color="lightblue",
-    font_size=10
-)
-
-# Draw edge labels
-edge_labels = nx.get_edge_attributes(G, 'relation')
-nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
-
-plt.title("RDF Graph Visualization")
-plt.show()
+print("\nSample Edges:")
+for edge in list(G.edges())[:10]:
+    print(edge)
