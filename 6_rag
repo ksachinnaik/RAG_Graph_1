@@ -1,178 +1,74 @@
 # ==========================================
-# Cell 11 : Graph Retriever
+# Cell 12 : Graph RAG Pipeline
 # ==========================================
 
-import re
-from collections import deque
+class GraphRAG:
 
+    def __init__(self, graph, llm):
 
-def graph_retriever(graph, query, max_hops=2, top_k=5):
+        self.graph = graph
+        self.llm = llm
 
-    # -----------------------------
-    # Step 1 : Query Keywords
-    # -----------------------------
+    def answer(self, query):
 
-    query_words = set(re.findall(r"\w+", query.lower()))
+        # -----------------------------------
+        # Graph Retrieval
+        # -----------------------------------
 
-    candidate_nodes = []
-
-    # -----------------------------
-    # Step 2 : Find Relevant Documents
-    # -----------------------------
-
-    for node, data in graph.nodes(data=True):
-
-        searchable_text = (
-            data["title"] + " " + data["content"]
-        ).lower()
-
-        words = set(re.findall(r"\w+", searchable_text))
-
-        overlap = len(query_words & words)
-
-        if overlap > 0:
-
-            candidate_nodes.append(
-                (
-                    node,
-                    overlap
-                )
-            )
-
-    if len(candidate_nodes) == 0:
-
-        print("No relevant document found.")
-        return [], ""
-
-    # -----------------------------
-    # Step 3 : Rank Initial Nodes
-    # -----------------------------
-
-    candidate_nodes.sort(
-        key=lambda x: (
-            x[1],
-            graph.nodes[x[0]]["pagerank"]
-        ),
-        reverse=True
-    )
-
-    start_nodes = [
-        node
-        for node, score in candidate_nodes[:top_k]
-    ]
-
-    print("=" * 60)
-    print("START DOCUMENTS")
-    print("=" * 60)
-
-    for node in start_nodes:
-
-        print(f"{node} : {graph.nodes[node]['title']}")
-
-    # -----------------------------
-    # Step 4 : Multi-Hop Traversal
-    # -----------------------------
-
-    visited = set()
-
-    queue = deque()
-
-    for node in start_nodes:
-
-        queue.append((node, 0))
-
-    retrieved = {}
-
-    while queue:
-
-        current, hop = queue.popleft()
-
-        if current in visited:
-            continue
-
-        if hop > max_hops:
-            continue
-
-        visited.add(current)
-
-        # Score combines:
-        #
-        # PageRank
-        # Hop Distance
-
-        score = (
-            graph.nodes[current]["pagerank"]
-            /
-            (hop + 1)
+        retrieved_nodes, context = graph_retriever(
+            graph=self.graph,
+            query=query,
+            max_hops=2,
+            top_k=5
         )
 
-        retrieved[current] = max(
-            score,
-            retrieved.get(current, 0)
-        )
+        # -----------------------------------
+        # Display Retrieved Documents
+        # -----------------------------------
 
-        # Outgoing References
+        print("\n")
+        print("=" * 70)
+        print("DOCUMENTS SENT TO LLM")
+        print("=" * 70)
 
-        for neighbor in graph.successors(current):
+        for node in retrieved_nodes:
 
-            queue.append(
-                (
-                    neighbor,
-                    hop + 1
-                )
-            )
+            print(f"Doc ID    : {node}")
+            print(f"Title     : {self.graph.nodes[node]['title']}")
+            print(f"PageRank  : {self.graph.nodes[node]['pagerank']:.5f}")
+            print("-" * 70)
 
-        # Incoming References
+        # -----------------------------------
+        # Prompt
+        # -----------------------------------
 
-        for neighbor in graph.predecessors(current):
+        prompt = f"""
+You are an expert assistant.
 
-            queue.append(
-                (
-                    neighbor,
-                    hop + 1
-                )
-            )
+Answer the user's question ONLY using the retrieved context below.
 
-    # -----------------------------
-    # Step 5 : Final Ranking
-    # -----------------------------
+If the answer is not present in the context, reply:
 
-    ranked = sorted(
+"I couldn't find the answer in the available XML documents."
 
-        retrieved.items(),
+Retrieved Context
+-----------------
 
-        key=lambda x: x[1],
+{context}
 
-        reverse=True
+-----------------
 
-    )
+Question:
 
-    top_nodes = [
+{query}
 
-        node
+Provide a clear and complete answer.
+"""
 
-        for node, score in ranked[:top_k]
+        # -----------------------------------
+        # LLM
+        # -----------------------------------
 
-    ]
+        response = self.llm.invoke(prompt)
 
-    print("\n")
-
-    print("=" * 60)
-    print("RETRIEVED DOCUMENTS")
-    print("=" * 60)
-
-    context = ""
-
-    for node in top_nodes:
-
-        print(f"{node} : {graph.nodes[node]['title']}")
-
-        context += "\n\n"
-
-        context += f"Document ID : {node}\n"
-
-        context += f"Title : {graph.nodes[node]['title']}\n"
-
-        context += graph.nodes[node]["content"]
-
-    return top_nodes, context
+        return response
