@@ -1,74 +1,47 @@
 # ==========================================
-# Cell 12 : Graph RAG Pipeline
+# Cell 13A : Execute Graph RAG Retrieval
 # ==========================================
 
-class GraphRAG:
+query = "How does MSC.Nastran relate to FBO analysis at Rolls-Royce?"
 
-    def __init__(self, graph, llm):
+rag = GraphRAG(
+    graph=G,
+    llm=llm
+)
 
-        self.graph = graph
-        self.llm = llm
+result = rag.answer(query)
 
-    def answer(self, query):
+print("\n")
+print("="*90)
+print("GRAPH RAG RETRIEVAL")
+print("="*90)
 
-        # -----------------------------------
-        # Graph Retrieval
-        # -----------------------------------
+print(f"\nUser Query : {result['query']}")
 
-        retrieved_nodes, context = graph_retriever(
-            graph=self.graph,
-            query=query,
-            max_hops=2,
-            top_k=5
-        )
+print("\n")
+print("="*90)
+print("RETRIEVED DOCUMENTS")
+print("="*90)
 
-        # -----------------------------------
-        # Display Retrieved Documents
-        # -----------------------------------
+for node in result["retrieved_nodes"]:
 
-        print("\n")
-        print("=" * 70)
-        print("DOCUMENTS SENT TO LLM")
-        print("=" * 70)
+    data = G.nodes[node]
 
-        for node in retrieved_nodes:
+    print(f"\nDocument ID : {node}")
+    print(f"Title       : {data['title']}")
+    print(f"PageRank    : {data['pagerank']:.6f}")
 
-            print(f"Doc ID    : {node}")
-            print(f"Title     : {self.graph.nodes[node]['title']}")
-            print(f"PageRank  : {self.graph.nodes[node]['pagerank']:.5f}")
-            print("-" * 70)
+print("\n")
+print("="*90)
+print("DOCUMENT RELATIONSHIPS")
+print("="*90)
 
-        # -----------------------------------
-        # Prompt
-        # -----------------------------------
+retrieved_graph = result["retrieved_graph"]
 
-        prompt = f"""
-You are an expert assistant.
+for source, target in retrieved_graph.edges():
 
-Answer the user's question ONLY using the retrieved context below.
-
-If the answer is not present in the context, reply:
-
-"I couldn't find the answer in the available XML documents."
-
-Retrieved Context
------------------
-
-{context}
-
------------------
-
-Question:
-
-{query}
-
-Provide a clear and complete answer.
-"""
-
-        # -----------------------------------
-        # LLM
-        # -----------------------------------
-
-        response = self.llm.invoke(prompt)
-
-        return response
+    print(
+        f"{source} ({G.nodes[source]['title']})"
+        f"  ----references---->  "
+        f"{target} ({G.nodes[target]['title']})"
+    )
