@@ -1,67 +1,40 @@
 # ==========================================
-# Cell 6 : Extract ALL doc/doc:wiki Links
+# Cell 5 : Reference -> doc_id Mapping
 # ==========================================
 
-import re
-
-all_links = {}
+reference_to_docid = {}
 
 rows = df_clean.collect()
 
 for row in rows:
 
-    doc_id = row["doc_id"]
     reference = row["reference"]
-    content = row["content"]
+    doc_id = row["doc_id"]
 
-    links = []
+    if reference and reference.strip():
 
-    # --------------------------------------
-    # Extract doc:wiki links
-    # --------------------------------------
+        if reference in reference_to_docid:
+            print(f"Duplicate reference found: {reference}")
 
-    wiki_links = re.findall(
-        r"doc:wiki:([^\]\s>]+)",
-        content
-    )
+        reference_to_docid[reference] = doc_id
 
-    for ref in wiki_links:
-        links.append(("doc:wiki", ref))
+print("=" * 60)
+print("REFERENCE → DOC_ID MAPPING")
+print("=" * 60)
 
-    # --------------------------------------
-    # Extract normal doc links
-    # (Exclude doc:wiki)
-    # --------------------------------------
+print(f"\nTotal Documents : {len(reference_to_docid)}")
 
-    doc_links = re.findall(
-        r"(?<!doc:wiki:)doc:([^\]\s>]+)",
-        content
-    )
+print("\nSample Mapping:\n")
 
-    for ref in doc_links:
+count = 0
 
-        # Skip if already extracted as doc:wiki
-        if ("doc:wiki", ref) not in links:
-            links.append(("doc", ref))
+for ref, doc in reference_to_docid.items():
 
-    # --------------------------------------
-    # Remove duplicates
-    # --------------------------------------
+    print(f"Doc ID    : {doc}")
+    print(f"Reference : {ref}")
+    print("-" * 60)
 
-    links = list(set(links))
+    count += 1
 
-    all_links[doc_id] = links
-
-    # --------------------------------------
-    # Display
-    # --------------------------------------
-
-    print("=" * 80)
-    print(f"Doc ID      : {doc_id}")
-    print(f"Reference   : {reference}")
-    print(f"Total Links : {len(links)}")
-
-    for relation, ref in links:
-        print(f"  --> {relation:<8} : {ref}")
-
-    print()
+    if count == 5:
+        break
