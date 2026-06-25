@@ -1,110 +1,43 @@
 # ==========================================
-# Cell 10 : Visualize Graph RAG Knowledge Graph
+# Cell 7 : Convert Links to RDF Triples
 # ==========================================
 
-import matplotlib.pyplot as plt
-import networkx as nx
+triples = []
 
-plt.figure(figsize=(22, 16))
+for parent_doc_id, links in all_links.items():
 
-# ------------------------------------------
-# Layout
-# ------------------------------------------
+    for relation, reference in links:
 
-pos = nx.kamada_kawai_layout(G)
+        # Find destination document
+        child_doc_id = reference_to_docid.get(reference)
 
-# ------------------------------------------
-# Draw Nodes
-# ------------------------------------------
+        # Skip if destination document doesn't exist
+        if child_doc_id is None:
+            continue
 
-nx.draw_networkx_nodes(
-    G,
-    pos,
-    node_size=5000,
-    node_color="#B7E1F7",
-    edgecolors="black",
-    linewidths=2
-)
+        # Avoid self-loops
+        if parent_doc_id == child_doc_id:
+            continue
 
-# ------------------------------------------
-# Draw Directed Edges
-# ------------------------------------------
+        # Create RDF Triple
+        triples.append(
+            (
+                parent_doc_id,
+                relation,          # doc or doc:wiki
+                child_doc_id
+            )
+        )
 
-nx.draw_networkx_edges(
-    G,
-    pos,
-    arrows=True,
-    arrowstyle="-|>",
-    arrowsize=35,
-    width=2.5,
-    edge_color="black",
-    connectionstyle="arc3,rad=0.10",
-    min_source_margin=25,
-    min_target_margin=25
-)
+# Remove duplicate triples
+triples = list(set(triples))
 
-# ------------------------------------------
-# Node Labels
-# ------------------------------------------
+print("=" * 60)
+print("RDF TRIPLES CREATED")
+print("=" * 60)
 
-node_labels = {}
+print(f"\nTotal RDF Triples : {len(triples)}")
 
-for node in G.nodes():
+print("\nSample RDF Triples:\n")
 
-    title = G.nodes[node]["title"]
-
-    if len(title) > 30:
-        title = title[:30] + "..."
-
-    node_labels[node] = f"{node}\n{title}"
-
-nx.draw_networkx_labels(
-    G,
-    pos,
-    labels=node_labels,
-    font_size=9,
-    font_weight="bold"
-)
-
-# ------------------------------------------
-# Relationship Labels
-# ------------------------------------------
-
-edge_labels = {}
-
-for source, target, data in G.edges(data=True):
-
-    relation = data.get("relation", "")
-
-    edge_labels[(source, target)] = relation
-
-nx.draw_networkx_edge_labels(
-    G,
-    pos,
-    edge_labels=edge_labels,
-    font_size=8,
-    rotate=False,
-    label_pos=0.5,
-    bbox=dict(
-        facecolor="white",
-        edgecolor="gray",
-        alpha=0.9,
-        boxstyle="round,pad=0.2"
-    )
-)
-
-# ------------------------------------------
-# Title
-# ------------------------------------------
-
-plt.title(
-    "Graph RAG Knowledge Graph (XML Document Relationships)",
-    fontsize=18,
-    fontweight="bold"
-)
-
-plt.axis("off")
-
-plt.tight_layout()
-
-plt.show()
+for triple in triples[:10]:
+    print(triple)
