@@ -1,43 +1,67 @@
 # ==========================================
-# Cell 7 : Convert Links to RDF Triples
+# Cell 6 : Extract ALL doc/doc:wiki Links
 # ==========================================
 
-triples = []
+import re
 
-for parent_doc_id, links in all_links.items():
+all_links = {}
 
-    for relation, reference in links:
+rows = df_clean.collect()
 
-        # Find destination document
-        child_doc_id = reference_to_docid.get(reference)
+for row in rows:
 
-        # Skip if destination document doesn't exist
-        if child_doc_id is None:
-            continue
+    doc_id = row["doc_id"]
+    reference = row["reference"]
+    content = row["content"]
 
-        # Avoid self-loops
-        if parent_doc_id == child_doc_id:
-            continue
+    links = []
 
-        # Create RDF Triple
-        triples.append(
-            (
-                parent_doc_id,
-                relation,          # doc or doc:wiki
-                child_doc_id
-            )
-        )
+    # --------------------------------------
+    # Extract doc:wiki links
+    # --------------------------------------
 
-# Remove duplicate triples
-triples = list(set(triples))
+    wiki_links = re.findall(
+        r"doc:wiki:([^\]\s>]+)",
+        content
+    )
 
-print("=" * 60)
-print("RDF TRIPLES CREATED")
-print("=" * 60)
+    for ref in wiki_links:
+        links.append(("doc:wiki", ref))
 
-print(f"\nTotal RDF Triples : {len(triples)}")
+    # --------------------------------------
+    # Extract normal doc links
+    # (Exclude doc:wiki)
+    # --------------------------------------
 
-print("\nSample RDF Triples:\n")
+    doc_links = re.findall(
+        r"(?<!doc:wiki:)doc:([^\]\s>]+)",
+        content
+    )
 
-for triple in triples[:10]:
-    print(triple)
+    for ref in doc_links:
+
+        # Skip if already extracted as doc:wiki
+        if ("doc:wiki", ref) not in links:
+            links.append(("doc", ref))
+
+    # --------------------------------------
+    # Remove duplicates
+    # --------------------------------------
+
+    links = list(set(links))
+
+    all_links[doc_id] = links
+
+    # --------------------------------------
+    # Display
+    # --------------------------------------
+
+    print("=" * 80)
+    print(f"Doc ID      : {doc_id}")
+    print(f"Reference   : {reference}")
+    print(f"Total Links : {len(links)}")
+
+    for relation, ref in links:
+        print(f"  --> {relation:<8} : {ref}")
+
+    print()
