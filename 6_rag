@@ -1,26 +1,43 @@
+import re
+from bs4 import BeautifulSoup
+from pyspark.sql import Row
+
 # ==========================================
-# Cell 5 : Create Reference → doc_id Mapping
+# CLEAN XML CONTENT
 # ==========================================
 
-reference_to_docid = {}
+def clean_text(text):
 
-rows = df_clean.collect()
+    if text is None:
+        return ""
 
-for row in rows:
+    # Remove CDATA markers
+    text = re.sub(r"<!\[CDATA\[|\]\]>", "", text)
 
-    doc_id = row["doc_id"]
-    reference = row["reference"]
+    # Remove HTML tags only
+    text = BeautifulSoup(text, "html.parser").get_text(" ")
 
-    if reference:
-        reference_to_docid[reference] = doc_id
+    # Normalize spaces
+    text = re.sub(r"\s+", " ", text).strip()
 
-print(f"Total References : {len(reference_to_docid)}")
+    return text
 
-print("\nSample Mapping:\n")
 
-for i, (ref, doc) in enumerate(reference_to_docid.items()):
+# ==========================================
+# CLEAN DATAFRAME
+# ==========================================
 
-    print(f"{doc}  --->  {ref}")
+df_clean = df_raw.rdd.map(
+    lambda r: Row(
+        doc_id=r["doc_id"],
+        source=r["source"],
+        title=r["title"],
+        reference=r["reference"],
+        version=r["version"],
+        content_update_date=r["content_update_date"],
+        content_author=r["content_author"],
+        content=clean_text(r["content"])
+    )
+).toDF()
 
-    if i == 4:
-        break
+display(df_clean)
