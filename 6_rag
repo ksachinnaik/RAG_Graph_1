@@ -1,58 +1,111 @@
-# =====================================================
-# Cell 15 : Retrieved Subgraph & Final Answer
-# =====================================================
+# ==========================================================
+# Cell 10 : Visualize Graph RAG Knowledge Graph
+# ==========================================================
 
-print("\n")
-print("=" * 90)
-print("CONNECTED RETRIEVED SUBGRAPH")
-print("=" * 90)
+import matplotlib.pyplot as plt
+import networkx as nx
 
-retrieved_graph = result["retrieved_graph"]
+def visualize_graph(graph):
 
-# -----------------------------------------------------
-# Build connected subgraph
-# -----------------------------------------------------
+    plt.figure(figsize=(22,16))
 
-if retrieved_graph.number_of_edges() > 0:
+    # ------------------------------------------------------
+    # Layout
+    # ------------------------------------------------------
+    pos = nx.kamada_kawai_layout(graph)
 
-    connected_nodes = set()
+    # ------------------------------------------------------
+    # Draw Nodes
+    # ------------------------------------------------------
+    nx.draw_networkx_nodes(
+        graph,
+        pos,
+        node_size=5000,
+        node_color="#B7E1F7",
+        edgecolors="black",
+        linewidths=2
+    )
 
-    for u, v in retrieved_graph.edges():
-        connected_nodes.add(u)
-        connected_nodes.add(v)
+    # ------------------------------------------------------
+    # Draw Directed Edges
+    # ------------------------------------------------------
+    nx.draw_networkx_edges(
+        graph,
+        pos,
+        arrows=True,
+        arrowstyle="-|>",
+        arrowsize=35,
+        width=2.5,
+        edge_color="black",
+        connectionstyle="arc3,rad=0.10",
+        min_source_margin=25,
+        min_target_margin=25
+    )
 
-    connected_subgraph = retrieved_graph.subgraph(
-        connected_nodes
-    ).copy()
+    # ------------------------------------------------------
+    # Node Labels
+    # ------------------------------------------------------
+    node_labels = {}
 
-else:
-    # If only one document is retrieved, keep it
-    connected_subgraph = retrieved_graph.copy()
+    for node in graph.nodes():
 
-# -----------------------------------------------------
-# Graph Statistics
-# -----------------------------------------------------
+        title = graph.nodes[node]["title"]
 
-print(f"\nRetrieved Nodes : {connected_subgraph.number_of_nodes()}")
-print(f"Retrieved Edges : {connected_subgraph.number_of_edges()}")
+        if len(title) > 30:
+            title = title[:30] + "..."
 
-# -----------------------------------------------------
-# Visualize Retrieved Graph
-# -----------------------------------------------------
+        node_labels[node] = f"{node}\n{title}"
 
-visualize_graph(connected_subgraph)
+    nx.draw_networkx_labels(
+        graph,
+        pos,
+        labels=node_labels,
+        font_size=9,
+        font_weight="bold"
+    )
 
-# -----------------------------------------------------
-# Final Answer
-# -----------------------------------------------------
+    # ------------------------------------------------------
+    # Relationship Labels
+    # ------------------------------------------------------
+    edge_labels = {}
 
-print("\n")
-print("=" * 90)
-print("FINAL ANSWER")
-print("=" * 90)
+    for source, target, data in graph.edges(data=True):
 
-print("\nQuestion:\n")
-print(result["query"])
+        relation = data.get("relation", "")
 
-print("\nAnswer:\n")
-print(result["answer"])
+        edge_labels[(source, target)] = relation
+
+    nx.draw_networkx_edge_labels(
+        graph,
+        pos,
+        edge_labels=edge_labels,
+        font_size=8,
+        rotate=False,
+        label_pos=0.5,
+        bbox=dict(
+            facecolor="white",
+            edgecolor="gray",
+            alpha=0.9,
+            boxstyle="round,pad=0.2"
+        )
+    )
+
+    # ------------------------------------------------------
+    # Title
+    # ------------------------------------------------------
+    plt.title(
+        "Graph RAG Knowledge Graph (XML Document Relationships)",
+        fontsize=18,
+        fontweight="bold"
+    )
+
+    plt.axis("off")
+    plt.tight_layout()
+    plt.show()
+
+
+# ----------------------------------------------------------
+# Visualize Complete Knowledge Graph
+# ----------------------------------------------------------
+
+visualize_graph(G)
