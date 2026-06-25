@@ -1,77 +1,178 @@
 # ==========================================
-# Cell 10 : Professional Knowledge Graph
+# Cell 11 : Graph Retriever
 # ==========================================
 
-import matplotlib.pyplot as plt
-import networkx as nx
+import re
+from collections import deque
 
-plt.figure(figsize=(16,12))
 
-# Better layout
-pos = nx.kamada_kawai_layout(G)
+def graph_retriever(graph, query, max_hops=2, top_k=5):
 
-# -------------------------
-# Draw Nodes
-# -------------------------
+    # -----------------------------
+    # Step 1 : Query Keywords
+    # -----------------------------
 
-nx.draw_networkx_nodes(
-    G,
-    pos,
-    node_size=4200,
-    node_color="#A8D8F0",
-    edgecolors="black",
-    linewidths=2
-)
+    query_words = set(re.findall(r"\w+", query.lower()))
 
-# -------------------------
-# Draw Edges
-# -------------------------
+    candidate_nodes = []
 
-nx.draw_networkx_edges(
-    G,
-    pos,
-    arrows=True,
-    arrowstyle="-|>",
-    arrowsize=35,
-    width=2.5,
-    edge_color="black",
-    connectionstyle="arc3,rad=0.08",
-    min_source_margin=25,
-    min_target_margin=25
-)
+    # -----------------------------
+    # Step 2 : Find Relevant Documents
+    # -----------------------------
 
-# -------------------------
-# Node Labels
-# -------------------------
+    for node, data in graph.nodes(data=True):
 
-labels = {}
+        searchable_text = (
+            data["title"] + " " + data["content"]
+        ).lower()
 
-for node in G.nodes():
+        words = set(re.findall(r"\w+", searchable_text))
 
-    title = G.nodes[node]["title"]
+        overlap = len(query_words & words)
 
-    # Short title
-    if len(title) > 28:
-        title = title[:28] + "..."
+        if overlap > 0:
 
-    labels[node] = f"{node}\n{title}"
+            candidate_nodes.append(
+                (
+                    node,
+                    overlap
+                )
+            )
 
-nx.draw_networkx_labels(
-    G,
-    pos,
-    labels,
-    font_size=9,
-    font_weight="bold"
-)
+    if len(candidate_nodes) == 0:
 
-plt.title(
-    "Graph RAG Knowledge Graph",
-    fontsize=18,
-    fontweight="bold"
-)
+        print("No relevant document found.")
+        return [], ""
 
-plt.axis("off")
+    # -----------------------------
+    # Step 3 : Rank Initial Nodes
+    # -----------------------------
 
-plt.tight_layout()
+    candidate_nodes.sort(
+        key=lambda x: (
+            x[1],
+            graph.nodes[x[0]]["pagerank"]
+        ),
+        reverse=True
+    )
 
-plt.show()
+    start_nodes = [
+        node
+        for node, score in candidate_nodes[:top_k]
+    ]
+
+    print("=" * 60)
+    print("START DOCUMENTS")
+    print("=" * 60)
+
+    for node in start_nodes:
+
+        print(f"{node} : {graph.nodes[node]['title']}")
+
+    # -----------------------------
+    # Step 4 : Multi-Hop Traversal
+    # -----------------------------
+
+    visited = set()
+
+    queue = deque()
+
+    for node in start_nodes:
+
+        queue.append((node, 0))
+
+    retrieved = {}
+
+    while queue:
+
+        current, hop = queue.popleft()
+
+        if current in visited:
+            continue
+
+        if hop > max_hops:
+            continue
+
+        visited.add(current)
+
+        # Score combines:
+        #
+        # PageRank
+        # Hop Distance
+
+        score = (
+            graph.nodes[current]["pagerank"]
+            /
+            (hop + 1)
+        )
+
+        retrieved[current] = max(
+            score,
+            retrieved.get(current, 0)
+        )
+
+        # Outgoing References
+
+        for neighbor in graph.successors(current):
+
+            queue.append(
+                (
+                    neighbor,
+                    hop + 1
+                )
+            )
+
+        # Incoming References
+
+        for neighbor in graph.predecessors(current):
+
+            queue.append(
+                (
+                    neighbor,
+                    hop + 1
+                )
+            )
+
+    # -----------------------------
+    # Step 5 : Final Ranking
+    # -----------------------------
+
+    ranked = sorted(
+
+        retrieved.items(),
+
+        key=lambda x: x[1],
+
+        reverse=True
+
+    )
+
+    top_nodes = [
+
+        node
+
+        for node, score in ranked[:top_k]
+
+    ]
+
+    print("\n")
+
+    print("=" * 60)
+    print("RETRIEVED DOCUMENTS")
+    print("=" * 60)
+
+    context = ""
+
+    for node in top_nodes:
+
+        print(f"{node} : {graph.nodes[node]['title']}")
+
+        context += "\n\n"
+
+        context += f"Document ID : {node}\n"
+
+        context += f"Title : {graph.nodes[node]['title']}\n"
+
+        context += graph.nodes[node]["content"]
+
+    return top_nodes, context
