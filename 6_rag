@@ -1,36 +1,40 @@
 # ==========================================
-# Cell 6 : Extract ALL doc/doc:wiki Links
+# Cell 7 : Convert Links to RDF Triples
 # ==========================================
 
-import re
+triples = []
 
-all_links = {}
+for parent_doc_id, links in all_links.items():
 
-rows = df_clean.collect()
+    for reference in links:
 
-for row in rows:
+        # Find the destination document
+        child_doc_id = reference_to_docid.get(reference)
 
-    doc_id = row["doc_id"]
-    reference = row["reference"]
-    content = row["content"]
+        # Create edge only if destination exists
+        if child_doc_id is not None:
 
-    # Extract every doc: or doc:wiki reference
-    links = re.findall(
-        r'doc:(?:wiki:)?([^\]\s>]+)',
-        content
-    )
+            # Avoid self-loops
+            if parent_doc_id != child_doc_id:
 
-    # Remove duplicates
-    links = list(set(links))
+                triples.append(
+                    (
+                        parent_doc_id,
+                        "references",
+                        child_doc_id
+                    )
+                )
 
-    all_links[doc_id] = links
+# Remove duplicate triples
+triples = list(set(triples))
 
-    print("=" * 80)
-    print(f"Doc ID      : {doc_id}")
-    print(f"Reference   : {reference}")
-    print(f"Total Links : {len(links)}")
+print("=" * 60)
+print("RDF Triples Created Successfully")
+print("=" * 60)
 
-    for link in links:
-        print("  -->", link)
+print(f"Total RDF Triples : {len(triples)}")
 
-    print()
+print("\nSample RDF Triples:\n")
+
+for triple in triples[:10]:
+    print(triple)
