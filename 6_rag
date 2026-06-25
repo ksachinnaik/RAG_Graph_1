@@ -5,104 +5,133 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 
-plt.figure(figsize=(12, 8))
+plt.figure(figsize=(15, 10))
 
-# Layout
+# Better graph layout
 pos = nx.spring_layout(
     G,
     seed=42,
-    k=2.5
+    k=3.5,
+    iterations=200
 )
 
-# -----------------------------
+# ==========================================
 # Draw Nodes
-# -----------------------------
+# ==========================================
+
 nx.draw_networkx_nodes(
     G,
     pos,
-    node_size=2500,
-    node_color="skyblue"
+    node_size=2800,
+    node_color="skyblue",
+    edgecolors="black",
+    linewidths=1.5
 )
 
-# -----------------------------
-# Draw Edges
-# -----------------------------
+# ==========================================
+# Draw Directed Edges
+# ==========================================
+
 nx.draw_networkx_edges(
     G,
     pos,
-    edge_color="gray",
     arrows=True,
-    arrowsize=20,
-    connectionstyle="arc3,rad=0.08"
+    arrowstyle="-|>",
+    arrowsize=28,
+    edge_color="black",
+    width=2,
+    connectionstyle="arc3,rad=0.10"
 )
 
-# -----------------------------
+# ==========================================
 # Node Labels
-# -----------------------------
-labels = {}
+# ==========================================
+
+node_labels = {}
 
 for node in G.nodes():
 
-    labels[node] = f"Doc {node}"
+    node_labels[node] = f"Doc {node}"
 
 nx.draw_networkx_labels(
     G,
     pos,
-    labels=labels,
+    labels=node_labels,
     font_size=10,
     font_weight="bold"
 )
 
-# -----------------------------
-# Edge Labels
-# -----------------------------
-edge_labels = nx.get_edge_attributes(
-    G,
-    "relation"
-)
+# ==========================================
+# Edge Labels (Destination Document Title)
+# ==========================================
+
+edge_labels = {}
+
+for source, target in G.edges():
+
+    title = G.nodes[target]["title"]
+
+    edge_labels[(source, target)] = title
 
 nx.draw_networkx_edge_labels(
     G,
     pos,
     edge_labels=edge_labels,
-    font_size=8
+    font_size=8,
+    rotate=False,
+    font_color="darkred"
 )
 
 plt.title(
     "Graph RAG Knowledge Graph",
-    fontsize=18
+    fontsize=18,
+    fontweight="bold"
 )
 
 plt.axis("off")
+
+plt.tight_layout()
+
 plt.show()
 
+
 # ==========================================
-# Print All Nodes
+# Graph Statistics
 # ==========================================
 
+print("="*70)
+print("Knowledge Graph Summary")
+print("="*70)
+
+print(f"Total Nodes : {G.number_of_nodes()}")
+print(f"Total Edges : {G.number_of_edges()}")
+
 print("\n")
-print("=" * 80)
-print("ALL NODES")
-print("=" * 80)
+
+# ==========================================
+# Node Details
+# ==========================================
+
+print("NODE DETAILS")
+print("-"*70)
 
 for node, data in G.nodes(data=True):
 
-    print(f"\nDoc ID      : {node}")
-    print(f"Title       : {data['title']}")
-    print(f"Reference   : {data['reference']}")
-    print(f"PageRank    : {data['pagerank']:.6f}")
+    print(f"Doc ID    : {node}")
+    print(f"Title     : {data['title']}")
+    print(f"Reference : {data['reference']}")
+    print(f"PageRank  : {data['pagerank']:.6f}")
+    print("-"*70)
 
 # ==========================================
-# Print All Edges
+# Edge Details
 # ==========================================
 
-print("\n")
-print("=" * 80)
-print("ALL EDGES")
-print("=" * 80)
+print("\nEDGE DETAILS")
+print("-"*70)
 
 for source, target, data in G.edges(data=True):
 
     print(
-        f"Doc {source} ----{data['relation']}----> Doc {target}"
+        f"Doc {source}  ---- {G.nodes[target]['title']} ---->  Doc {target}"
     )
