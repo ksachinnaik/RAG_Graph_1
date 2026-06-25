@@ -1,85 +1,67 @@
 # ==========================================
-# Cell 10 : Visualize Knowledge Graph
+# Cell 10 : Professional Knowledge Graph
 # ==========================================
 
 import matplotlib.pyplot as plt
 import networkx as nx
 
-plt.figure(figsize=(15, 10))
+plt.figure(figsize=(16,12))
 
-# Better graph layout
-pos = nx.spring_layout(
-    G,
-    seed=42,
-    k=3.5,
-    iterations=200
-)
+# Better layout
+pos = nx.kamada_kawai_layout(G)
 
-# ==========================================
+# -------------------------
 # Draw Nodes
-# ==========================================
+# -------------------------
 
 nx.draw_networkx_nodes(
     G,
     pos,
-    node_size=2800,
-    node_color="skyblue",
+    node_size=4200,
+    node_color="#A8D8F0",
     edgecolors="black",
-    linewidths=1.5
+    linewidths=2
 )
 
-# ==========================================
-# Draw Directed Edges
-# ==========================================
+# -------------------------
+# Draw Edges
+# -------------------------
 
 nx.draw_networkx_edges(
     G,
     pos,
     arrows=True,
     arrowstyle="-|>",
-    arrowsize=28,
+    arrowsize=35,
+    width=2.5,
     edge_color="black",
-    width=2,
-    connectionstyle="arc3,rad=0.10"
+    connectionstyle="arc3,rad=0.08",
+    min_source_margin=25,
+    min_target_margin=25
 )
 
-# ==========================================
+# -------------------------
 # Node Labels
-# ==========================================
+# -------------------------
 
-node_labels = {}
+labels = {}
 
 for node in G.nodes():
 
-    node_labels[node] = f"Doc {node}"
+    title = G.nodes[node]["title"]
+
+    # Short title
+    if len(title) > 28:
+        title = title[:28] + "..."
+
+    labels[node] = f"{node}\n{title}"
 
 nx.draw_networkx_labels(
     G,
     pos,
-    labels=node_labels,
-    font_size=10,
+    labels,
+    font_size=9,
     font_weight="bold"
-)
-
-# ==========================================
-# Edge Labels (Destination Document Title)
-# ==========================================
-
-edge_labels = {}
-
-for source, target in G.edges():
-
-    title = G.nodes[target]["title"]
-
-    edge_labels[(source, target)] = title
-
-nx.draw_networkx_edge_labels(
-    G,
-    pos,
-    edge_labels=edge_labels,
-    font_size=8,
-    rotate=False,
-    font_color="darkred"
 )
 
 plt.title(
@@ -93,45 +75,3 @@ plt.axis("off")
 plt.tight_layout()
 
 plt.show()
-
-
-# ==========================================
-# Graph Statistics
-# ==========================================
-
-print("="*70)
-print("Knowledge Graph Summary")
-print("="*70)
-
-print(f"Total Nodes : {G.number_of_nodes()}")
-print(f"Total Edges : {G.number_of_edges()}")
-
-print("\n")
-
-# ==========================================
-# Node Details
-# ==========================================
-
-print("NODE DETAILS")
-print("-"*70)
-
-for node, data in G.nodes(data=True):
-
-    print(f"Doc ID    : {node}")
-    print(f"Title     : {data['title']}")
-    print(f"Reference : {data['reference']}")
-    print(f"PageRank  : {data['pagerank']:.6f}")
-    print("-"*70)
-
-# ==========================================
-# Edge Details
-# ==========================================
-
-print("\nEDGE DETAILS")
-print("-"*70)
-
-for source, target, data in G.edges(data=True):
-
-    print(
-        f"Doc {source}  ---- {G.nodes[target]['title']} ---->  Doc {target}"
-    )
