@@ -1,53 +1,83 @@
 # ==========================================
-# Cell 13 : Graph Retrieval
+# Cell 12 : GraphRAG Pipeline
 # ==========================================
 
-query = "How does MSC.Nastran relate to FBO analysis at Rolls-Royce?"
+class GraphRAG:
 
-rag = GraphRAG(
-    graph=G,
-    llm=llm
-)
+    def __init__(self, graph, llm):
 
-result = rag.answer(query)
+        self.graph = graph
+        self.llm = llm
 
-print("\n")
-print("="*90)
-print("GRAPH RAG RETRIEVAL")
-print("="*90)
+    def answer(self, query):
 
-print(f"\nUser Query :\n{result['query']}")
+        # -----------------------------------
+        # Graph Retrieval
+        # -----------------------------------
 
-print("\n")
-print("="*90)
-print("RETRIEVED DOCUMENTS")
-print("="*90)
+        retrieved_nodes, context = graph_retriever(
+            graph=self.graph,
+            query=query,
+            max_hops=2,
+            top_k=5
+        )
 
-for node in result["retrieved_nodes"]:
+        # -----------------------------------
+        # Create Retrieved Subgraph
+        # -----------------------------------
 
-    node_data = G.nodes[node]
+        retrieved_graph = self.graph.subgraph(
+            retrieved_nodes
+        ).copy()
 
-    print(f"\nDocument ID : {node}")
-    print(f"Title       : {node_data['title']}")
-    print(f"PageRank    : {node_data['pagerank']:.6f}")
+        # -----------------------------------
+        # Prompt
+        # -----------------------------------
 
-print("\n")
-print("="*90)
-print("RETRIEVED RELATIONSHIPS")
-print("="*90)
+        prompt = f"""
+You are an expert assistant.
 
-retrieved_graph = result["retrieved_graph"]
+Answer ONLY from the provided XML document context.
 
-for source, target in retrieved_graph.edges():
+If the answer is not available in the context, say:
 
-    print(
-        f"{source} ({G.nodes[source]['title']})"
-        f"  ----references---->  "
-        f"{target} ({G.nodes[target]['title']})"
-    )
+'I couldn't find the answer in the provided XML documents.'
 
-print("\n")
-print("="*90)
-print(f"Retrieved Nodes : {retrieved_graph.number_of_nodes()}")
-print(f"Retrieved Edges : {retrieved_graph.number_of_edges()}")
-print("="*90)
+=========================
+Context
+=========================
+
+{context}
+
+=========================
+Question
+=========================
+
+{query}
+
+Provide a detailed technical answer.
+"""
+
+        # -----------------------------------
+        # Azure OpenAI
+        # -----------------------------------
+
+        response = self.llm.invoke(prompt)
+
+        # -----------------------------------
+        # Return Everything
+        # -----------------------------------
+
+        return {
+
+            "query": query,
+
+            "answer": response.content,
+
+            "retrieved_nodes": retrieved_nodes,
+
+            "retrieved_graph": retrieved_graph,
+
+            "context": context
+
+        }
