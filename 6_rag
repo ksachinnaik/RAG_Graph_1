@@ -1,71 +1,59 @@
-# ==============================
-# XML FILE PATHS (Testing)
-# ==============================
+import xml.etree.ElementTree as ET
+from pyspark.sql import Row
+
+# ==========================================
+# XML FILE PATHS (Testing - 5 XML Files)
+# ==========================================
 
 xml_paths = [
-    "/Volumes/...3829c0e9.../WebHome.xml",
-    "/Volumes/...76f049ea.../WebHome.xml",
-    "/Volumes/...07730902.../WebHome.xml",
-    "/Volumes/...f2280f6d.../WebHome.xml",
-    "/Volumes/...96bf76a9.../WebHome.xml"
+    "/Volumes/knwbt_airr_foundry_dev_catalog/secured/vol/Knowledge Bot/Temp_Import/3829c0e9-2342-11f1-8720-005056902ed8/WebHome.xml",
+    "/Volumes/knwbt_airr_foundry_dev_catalog/secured/vol/Knowledge Bot/Temp_Import/76f049ea-230a-11f1-8720-005056902ed8/WebHome.xml",
+    "/Volumes/knwbt_airr_foundry_dev_catalog/secured/vol/Knowledge Bot/Temp_Import/0773d902-2304-11f1-8720-005056902ed8/WebHome.xml",
+    "/Volumes/knwbt_airr_foundry_dev_catalog/secured/vol/Knowledge Bot/Temp_Import/f2280f6d-230b-11f1-8720-005056902ed8/WebHome.xml",
+    "/Volumes/knwbt_airr_foundry_dev_catalog/secured/vol/Knowledge Bot/Temp_Import/96bf76a9-234d-11f1-8720-005056902ed8/WebHome.xml"
 ]
 
 rows = []
 
-# ==============================
+# ==========================================
 # READ XML FILES
-# ==============================
+# ==========================================
 
-for path in xml_paths:
+for idx, path in enumerate(xml_paths):
 
-    with open(path, "rb") as f:
-        soup = BeautifulSoup(f.read(), "xml")
+    tree = ET.parse(path)
+    root = tree.getroot()
 
-    # Extract XML fields
-    content = soup.find("content").text if soup.find("content") else ""
+    # XML Fields
+    content = root.findtext("content") or ""
+    title = root.findtext("title")
+    version = root.findtext("version")
+    update_date = root.findtext("contentUpdateDate")
 
-    title = soup.find("title").text if soup.find("title") else None
+    author_raw = root.findtext("contentAuthor")
+    author = author_raw.split(".")[-1] if author_raw else None
 
-    xwikidoc = soup.find("xwikidoc")
-    reference = xwikidoc.get("reference") if xwikidoc else None
-
-    version = soup.find("version").text if soup.find("version") else None
-
-    update_date = (
-        soup.find("contentUpdateDate").text
-        if soup.find("contentUpdateDate")
-        else None
-    )
-
-    author = (
-        soup.find("contentAuthor").text.split(".")[-1]
-        if soup.find("contentAuthor")
-        else None
-    )
+    # Root attribute
+    reference = root.get("reference")
 
     rows.append(
         Row(
-            content=content,
+            doc_id=idx,
             source=path,
             title=title,
             reference=reference,
             version=version,
             content_update_date=update_date,
-            content_author=author
+            content_author=author,
+            content=content
         )
     )
 
-# ==============================
+# ==========================================
 # CREATE SPARK DATAFRAME
-# ==============================
+# ==========================================
 
 df_raw = spark.createDataFrame(rows)
-
-# Graph Node ID
-df_raw = df_raw.withColumn(
-    "doc_id",
-    monotonically_increasing_id()
-)
 
 print(f"Total XML Documents : {df_raw.count()}")
 
