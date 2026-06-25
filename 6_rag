@@ -1,31 +1,19 @@
 import re
-from bs4 import BeautifulSoup
 from pyspark.sql import Row
-
-# ==========================================
-# CLEAN XML CONTENT
-# ==========================================
 
 def clean_text(text):
 
     if text is None:
         return ""
 
-    # Remove CDATA markers
+    # Remove CDATA markers only
     text = re.sub(r"<!\[CDATA\[|\]\]>", "", text)
 
-    # Remove HTML tags only
-    text = BeautifulSoup(text, "html.parser").get_text(" ")
-
-    # Normalize spaces
+    # Normalize whitespace
     text = re.sub(r"\s+", " ", text).strip()
 
     return text
 
-
-# ==========================================
-# CLEAN DATAFRAME
-# ==========================================
 
 df_clean = df_raw.rdd.map(
     lambda r: Row(
