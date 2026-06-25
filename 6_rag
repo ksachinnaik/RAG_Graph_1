@@ -1,48 +1,36 @@
 # ==========================================
-# Cell 6 : Extract Links & Create RDF Triples
+# Cell 6 : Extract ALL doc/doc:wiki Links
 # ==========================================
 
 import re
 
-triples = []
+all_links = {}
 
 rows = df_clean.collect()
 
 for row in rows:
 
-    parent_doc_id = row["doc_id"]
+    doc_id = row["doc_id"]
+    reference = row["reference"]
     content = row["content"]
 
-    if not content:
-        continue
-
-    # Extract doc: and doc:wiki references
+    # Extract every doc: or doc:wiki reference
     links = re.findall(
-        r'doc:(?:wiki:)?(Temp_Import\.[A-Za-z0-9:_\.\-]+?\.WebHome)',
+        r'doc:(?:wiki:)?([^\]\s>]+)',
         content
     )
 
-    for reference in links:
+    # Remove duplicates
+    links = list(set(links))
 
-        # Check if referenced document exists
-        if reference in reference_to_docid:
+    all_links[doc_id] = links
 
-            child_doc_id = reference_to_docid[reference]
+    print("=" * 80)
+    print(f"Doc ID      : {doc_id}")
+    print(f"Reference   : {reference}")
+    print(f"Total Links : {len(links)}")
 
-            # Avoid self-loop
-            if parent_doc_id != child_doc_id:
+    for link in links:
+        print("  -->", link)
 
-                triples.append(
-                    (
-                        parent_doc_id,
-                        "references",
-                        child_doc_id
-                    )
-                )
-
-print(f"Total RDF Triples : {len(triples)}")
-
-print("\nSample RDF Triples\n")
-
-for triple in triples[:10]:
-    print(triple)
+    print()
