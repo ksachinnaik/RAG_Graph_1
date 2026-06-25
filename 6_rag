@@ -1,12 +1,16 @@
 import re
 from pyspark.sql import Row
 
+# ==========================================
+# CLEAN XML CONTENT
+# ==========================================
+
 def clean_text(text):
 
     if text is None:
         return ""
 
-    # Remove CDATA markers only
+    # Remove CDATA markers
     text = re.sub(r"<!\[CDATA\[|\]\]>", "", text)
 
     # Normalize whitespace
@@ -15,17 +19,31 @@ def clean_text(text):
     return text
 
 
-df_clean = df_raw.rdd.map(
-    lambda r: Row(
-        doc_id=r["doc_id"],
-        source=r["source"],
-        title=r["title"],
-        reference=r["reference"],
-        version=r["version"],
-        content_update_date=r["content_update_date"],
-        content_author=r["content_author"],
-        content=clean_text(r["content"])
+# ==========================================
+# CREATE CLEAN DATAFRAME
+# ==========================================
+
+clean_rows = []
+
+for row in df_raw.collect():
+
+    clean_rows.append(
+        Row(
+            doc_id=row["doc_id"],
+            source=row["source"],
+            title=row["title"],
+            reference=row["reference"],
+            version=row["version"],
+            content_update_date=row["content_update_date"],
+            content_author=row["content_author"],
+
+            # Keep doc:/doc:wiki links intact
+            content=clean_text(row["content"])
+        )
     )
-).toDF()
+
+df_clean = spark.createDataFrame(clean_rows)
+
+print(f"Total Clean Documents : {df_clean.count()}")
 
 display(df_clean)
