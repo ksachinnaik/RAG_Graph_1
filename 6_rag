@@ -1,49 +1,32 @@
-import re
-from pyspark.sql import Row
-
 # ==========================================
-# CLEAN XML CONTENT
+# Cell 5 : Reference -> doc_id Mapping
 # ==========================================
 
-def clean_text(text):
+reference_to_docid = {}
 
-    if text is None:
-        return ""
+rows = df_clean.collect()
 
-    # Remove CDATA markers
-    text = re.sub(r"<!\[CDATA\[|\]\]>", "", text)
+for row in rows:
 
-    # Normalize whitespace
-    text = re.sub(r"\s+", " ", text).strip()
+    reference = row["reference"]
+    doc_id = row["doc_id"]
 
-    return text
+    if reference:
+        reference_to_docid[reference] = doc_id
 
+print(f"Total Documents : {len(reference_to_docid)}")
 
-# ==========================================
-# CREATE CLEAN DATAFRAME
-# ==========================================
+print("\nSample Mapping:\n")
 
-clean_rows = []
+count = 0
 
-for row in df_raw.collect():
+for ref, doc in reference_to_docid.items():
 
-    clean_rows.append(
-        Row(
-            doc_id=row["doc_id"],
-            source=row["source"],
-            title=row["title"],
-            reference=row["reference"],
-            version=row["version"],
-            content_update_date=row["content_update_date"],
-            content_author=row["content_author"],
+    print(f"Doc ID : {doc}")
+    print(f"Reference : {ref}")
+    print("-" * 60)
 
-            # Keep doc:/doc:wiki links intact
-            content=clean_text(row["content"])
-        )
-    )
+    count += 1
 
-df_clean = spark.createDataFrame(clean_rows)
-
-print(f"Total Clean Documents : {df_clean.count()}")
-
-display(df_clean)
+    if count == 5:
+        break
