@@ -1,40 +1,79 @@
 # ==========================================
-# Cell 7 : Convert Links to RDF Triples
+# Cell 8 : Build NetworkX Knowledge Graph
 # ==========================================
 
-triples = []
+import networkx as nx
 
-for parent_doc_id, links in all_links.items():
+# Create Directed Knowledge Graph
+G = nx.DiGraph()
 
-    for reference in links:
+# ==========================================
+# Add Document Nodes
+# ==========================================
 
-        # Find the destination document
-        child_doc_id = reference_to_docid.get(reference)
+for row in df_clean.collect():
 
-        # Create edge only if destination exists
-        if child_doc_id is not None:
+    G.add_node(
 
-            # Avoid self-loops
-            if parent_doc_id != child_doc_id:
+        row["doc_id"],
 
-                triples.append(
-                    (
-                        parent_doc_id,
-                        "references",
-                        child_doc_id
-                    )
-                )
+        title=row["title"],
+        reference=row["reference"],
+        source=row["source"],
+        version=row["version"],
+        author=row["content_author"],
+        content=row["content"]
 
-# Remove duplicate triples
-triples = list(set(triples))
+    )
 
-print("=" * 60)
-print("RDF Triples Created Successfully")
-print("=" * 60)
+# ==========================================
+# Add Relationships (Edges)
+# ==========================================
 
-print(f"Total RDF Triples : {len(triples)}")
+for subject, relation, obj in triples:
 
-print("\nSample RDF Triples:\n")
+    G.add_edge(
 
-for triple in triples[:10]:
-    print(triple)
+        subject,
+        obj,
+
+        relation=relation
+
+    )
+
+# ==========================================
+# Graph Summary
+# ==========================================
+
+print("=" * 70)
+print("Knowledge Graph Created Successfully")
+print("=" * 70)
+
+print(f"Total Nodes : {G.number_of_nodes()}")
+print(f"Total Edges : {G.number_of_edges()}")
+
+# ==========================================
+# Verify Nodes
+# ==========================================
+
+print("\nSample Nodes\n")
+
+for node_id, data in list(G.nodes(data=True))[:5]:
+
+    print(f"Node ID   : {node_id}")
+    print(f"Title     : {data['title']}")
+    print(f"Reference : {data['reference']}")
+    print(f"Version   : {data['version']}")
+    print("-" * 70)
+
+# ==========================================
+# Verify Edges
+# ==========================================
+
+print("\nSample Edges\n")
+
+for source, target, data in list(G.edges(data=True))[:10]:
+
+    print(
+        f"{source} ----{data['relation']}----> {target}"
+    )
