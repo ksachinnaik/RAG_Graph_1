@@ -1,40 +1,62 @@
 # ==========================================
-# Cell 5 : Reference -> doc_id Mapping
+# Cell 6 : Extract ALL XML References
 # ==========================================
 
-reference_to_docid = {}
+import re
+
+all_links = {}
 
 rows = df_clean.collect()
 
 for row in rows:
 
-    reference = row["reference"]
     doc_id = row["doc_id"]
+    reference = row["reference"]
+    content = row["content"]
 
-    if reference and reference.strip():
+    links = []
 
-        if reference in reference_to_docid:
-            print(f"Duplicate reference found: {reference}")
+    # ==========================================
+    # Extract all doc references
+    # ==========================================
 
-        reference_to_docid[reference] = doc_id
+    matches = re.findall(
+        r"(doc:wiki|doc:Temp_Import|doc):([^\]\s>]+)",
+        content
+    )
 
-print("=" * 60)
-print("REFERENCE → DOC_ID MAPPING")
-print("=" * 60)
+    for link_type, ref in matches:
 
-print(f"\nTotal Documents : {len(reference_to_docid)}")
+        if link_type == "doc:wiki":
+            relation = "doc:wiki"
 
-print("\nSample Mapping:\n")
+        elif link_type == "doc:Temp_Import":
+            relation = "doc:Temp_Import"
 
-count = 0
+        else:
+            relation = "doc"
 
-for ref, doc in reference_to_docid.items():
+        links.append((relation, ref))
 
-    print(f"Doc ID    : {doc}")
-    print(f"Reference : {ref}")
-    print("-" * 60)
+    # ==========================================
+    # Remove duplicate links
+    # ==========================================
 
-    count += 1
+    links = list(set(links))
 
-    if count == 5:
-        break
+    all_links[doc_id] = links
+
+    # ==========================================
+    # Display
+    # ==========================================
+
+    print("=" * 80)
+    print(f"Doc ID      : {doc_id}")
+    print(f"Reference   : {reference}")
+    print(f"Total Links : {len(links)}")
+    print("-" * 80)
+
+    for relation, ref in links:
+        print(f"{relation:<18} --> {ref}")
+
+    print()
