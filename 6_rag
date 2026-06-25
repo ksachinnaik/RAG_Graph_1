@@ -1,62 +1,58 @@
-# ==========================================
-# Cell 6 : Extract ALL XML References
-# ==========================================
+# =====================================================
+# Cell 15 : Retrieved Subgraph & Final Answer
+# =====================================================
 
-import re
+print("\n")
+print("=" * 90)
+print("CONNECTED RETRIEVED SUBGRAPH")
+print("=" * 90)
 
-all_links = {}
+retrieved_graph = result["retrieved_graph"]
 
-rows = df_clean.collect()
+# -----------------------------------------------------
+# Build connected subgraph
+# -----------------------------------------------------
 
-for row in rows:
+if retrieved_graph.number_of_edges() > 0:
 
-    doc_id = row["doc_id"]
-    reference = row["reference"]
-    content = row["content"]
+    connected_nodes = set()
 
-    links = []
+    for u, v in retrieved_graph.edges():
+        connected_nodes.add(u)
+        connected_nodes.add(v)
 
-    # ==========================================
-    # Extract all doc references
-    # ==========================================
+    connected_subgraph = retrieved_graph.subgraph(
+        connected_nodes
+    ).copy()
 
-    matches = re.findall(
-        r"(doc:wiki|doc:Temp_Import|doc):([^\]\s>]+)",
-        content
-    )
+else:
+    # If only one document is retrieved, keep it
+    connected_subgraph = retrieved_graph.copy()
 
-    for link_type, ref in matches:
+# -----------------------------------------------------
+# Graph Statistics
+# -----------------------------------------------------
 
-        if link_type == "doc:wiki":
-            relation = "doc:wiki"
+print(f"\nRetrieved Nodes : {connected_subgraph.number_of_nodes()}")
+print(f"Retrieved Edges : {connected_subgraph.number_of_edges()}")
 
-        elif link_type == "doc:Temp_Import":
-            relation = "doc:Temp_Import"
+# -----------------------------------------------------
+# Visualize Retrieved Graph
+# -----------------------------------------------------
 
-        else:
-            relation = "doc"
+visualize_graph(connected_subgraph)
 
-        links.append((relation, ref))
+# -----------------------------------------------------
+# Final Answer
+# -----------------------------------------------------
 
-    # ==========================================
-    # Remove duplicate links
-    # ==========================================
+print("\n")
+print("=" * 90)
+print("FINAL ANSWER")
+print("=" * 90)
 
-    links = list(set(links))
+print("\nQuestion:\n")
+print(result["query"])
 
-    all_links[doc_id] = links
-
-    # ==========================================
-    # Display
-    # ==========================================
-
-    print("=" * 80)
-    print(f"Doc ID      : {doc_id}")
-    print(f"Reference   : {reference}")
-    print(f"Total Links : {len(links)}")
-    print("-" * 80)
-
-    for relation, ref in links:
-        print(f"{relation:<18} --> {ref}")
-
-    print()
+print("\nAnswer:\n")
+print(result["answer"])
