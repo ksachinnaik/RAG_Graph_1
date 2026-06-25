@@ -1,44 +1,72 @@
-class GraphRAG:
+# ==============================
+# XML FILE PATHS (Testing)
+# ==============================
 
-    def __init__(self, graph, vector_store, llm):
-        self.graph = graph
-        self.vector_store = vector_store
-        self.llm = llm
+xml_paths = [
+    "/Volumes/...3829c0e9.../WebHome.xml",
+    "/Volumes/...76f049ea.../WebHome.xml",
+    "/Volumes/...07730902.../WebHome.xml",
+    "/Volumes/...f2280f6d.../WebHome.xml",
+    "/Volumes/...96bf76a9.../WebHome.xml"
+]
 
-    def answer(self, query):
+rows = []
 
-        # Step 1: Retrieve nodes
-        nodes, path = graph_retriever(
-            self.graph,
-            self.vector_store,
-            query
+# ==============================
+# READ XML FILES
+# ==============================
+
+for path in xml_paths:
+
+    with open(path, "rb") as f:
+        soup = BeautifulSoup(f.read(), "xml")
+
+    # Extract XML fields
+    content = soup.find("content").text if soup.find("content") else ""
+
+    title = soup.find("title").text if soup.find("title") else None
+
+    xwikidoc = soup.find("xwikidoc")
+    reference = xwikidoc.get("reference") if xwikidoc else None
+
+    version = soup.find("version").text if soup.find("version") else None
+
+    update_date = (
+        soup.find("contentUpdateDate").text
+        if soup.find("contentUpdateDate")
+        else None
+    )
+
+    author = (
+        soup.find("contentAuthor").text.split(".")[-1]
+        if soup.find("contentAuthor")
+        else None
+    )
+
+    rows.append(
+        Row(
+            content=content,
+            source=path,
+            title=title,
+            reference=reference,
+            version=version,
+            content_update_date=update_date,
+            content_author=author
         )
+    )
 
-        print("Retrieved Nodes:", nodes)
+# ==============================
+# CREATE SPARK DATAFRAME
+# ==============================
 
-        # Step 2: Visualize subgraph
-        visualize_subgraph(self.graph, nodes, path)
+df_raw = spark.createDataFrame(rows)
 
-        # Step 3: Build context
-        context = ""
+# Graph Node ID
+df_raw = df_raw.withColumn(
+    "doc_id",
+    monotonically_increasing_id()
+)
 
-        for n in nodes:
-            content = self.graph.nodes[n].get("content", "")
-            if content:
-                context += "\n" + content
+print(f"Total XML Documents : {df_raw.count()}")
 
-        # Step 4: Prompt
-        prompt = f"""
-Answer the question using the context below.
-
-Context:
-{context}
-
-Question:
-{query}
-"""
-
-        # Step 5: LLM response
-        response = self.llm.invoke(prompt)
-
-        return response.content
+display(df_raw)
