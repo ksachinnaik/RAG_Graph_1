@@ -1,34 +1,71 @@
 # ==========================================
-# Cell 14 : Visualization & Final Answer
+# Graph Visualization Function
 # ==========================================
 
-print("\n")
-print("="*90)
-print("CONNECTED RETRIEVED SUBGRAPH")
-print("="*90)
+import matplotlib.pyplot as plt
+import networkx as nx
 
-retrieved_graph = result["retrieved_graph"]
+def visualize_graph(graph):
 
-# Remove isolated nodes
-connected_nodes = set()
+    plt.figure(figsize=(15,10))
 
-for u, v in retrieved_graph.edges():
-    connected_nodes.add(u)
-    connected_nodes.add(v)
+    pos = nx.spring_layout(
+        graph,
+        seed=42,
+        k=2,
+        iterations=300
+    )
 
-connected_subgraph = retrieved_graph.subgraph(
-    connected_nodes
-).copy()
+    # Draw Nodes
+    nx.draw_networkx_nodes(
+        graph,
+        pos,
+        node_size=3500,
+        node_color="skyblue",
+        edgecolors="black",
+        linewidths=2
+    )
 
-visualize_graph(connected_subgraph)
+    # Draw Edges
+    nx.draw_networkx_edges(
+        graph,
+        pos,
+        arrows=True,
+        arrowstyle="-|>",
+        arrowsize=30,
+        width=2,
+        edge_color="black",
+        connectionstyle="arc3,rad=0.08"
+    )
 
-print("\n")
-print("="*90)
-print("FINAL ANSWER")
-print("="*90)
+    # Node Labels (doc_id + title)
+    labels = {}
 
-print("\nQuestion:")
-print(result["query"])
+    for node in graph.nodes():
 
-print("\nAnswer:\n")
-print(result["answer"])
+        title = graph.nodes[node]["title"]
+
+        if len(title) > 25:
+            title = title[:25] + "..."
+
+        labels[node] = f"{node}\n{title}"
+
+    nx.draw_networkx_labels(
+        graph,
+        pos,
+        labels,
+        font_size=9,
+        font_weight="bold"
+    )
+
+    plt.title(
+        "Retrieved Graph RAG Subgraph",
+        fontsize=16,
+        fontweight="bold"
+    )
+
+    plt.axis("off")
+
+    plt.tight_layout()
+
+    plt.show()
