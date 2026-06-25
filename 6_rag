@@ -1,79 +1,36 @@
 # ==========================================
-# Cell 8 : Build NetworkX Knowledge Graph
+# Cell 9 : Compute PageRank
 # ==========================================
 
 import networkx as nx
 
-# Create Directed Knowledge Graph
-G = nx.DiGraph()
+# Compute PageRank
+pagerank_scores = nx.pagerank(G)
 
-# ==========================================
-# Add Document Nodes
-# ==========================================
+# Store PageRank score in each node
+for node_id, score in pagerank_scores.items():
 
-for row in df_clean.collect():
-
-    G.add_node(
-
-        row["doc_id"],
-
-        title=row["title"],
-        reference=row["reference"],
-        source=row["source"],
-        version=row["version"],
-        author=row["content_author"],
-        content=row["content"]
-
-    )
-
-# ==========================================
-# Add Relationships (Edges)
-# ==========================================
-
-for subject, relation, obj in triples:
-
-    G.add_edge(
-
-        subject,
-        obj,
-
-        relation=relation
-
-    )
-
-# ==========================================
-# Graph Summary
-# ==========================================
+    G.nodes[node_id]["pagerank"] = score
 
 print("=" * 70)
-print("Knowledge Graph Created Successfully")
+print("PageRank Computed Successfully")
 print("=" * 70)
 
-print(f"Total Nodes : {G.number_of_nodes()}")
-print(f"Total Edges : {G.number_of_edges()}")
+# Sort nodes by PageRank
+top_nodes = sorted(
+    pagerank_scores.items(),
+    key=lambda x: x[1],
+    reverse=True
+)
 
-# ==========================================
-# Verify Nodes
-# ==========================================
+print("\nTop Important Documents\n")
 
-print("\nSample Nodes\n")
+for node_id, score in top_nodes:
 
-for node_id, data in list(G.nodes(data=True))[:5]:
+    node = G.nodes[node_id]
 
-    print(f"Node ID   : {node_id}")
-    print(f"Title     : {data['title']}")
-    print(f"Reference : {data['reference']}")
-    print(f"Version   : {data['version']}")
+    print(f"Doc ID    : {node_id}")
+    print(f"Title     : {node['title']}")
+    print(f"Reference : {node['reference']}")
+    print(f"PageRank  : {score:.6f}")
     print("-" * 70)
-
-# ==========================================
-# Verify Edges
-# ==========================================
-
-print("\nSample Edges\n")
-
-for source, target, data in list(G.edges(data=True))[:10]:
-
-    print(
-        f"{source} ----{data['relation']}----> {target}"
-    )
