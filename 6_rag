@@ -1,47 +1,17 @@
 # ==========================================
-# Cell 13A : Execute Graph RAG Retrieval
+# Cell 13B : Visualization & Final Answer
 # ==========================================
 
-query = "How does MSC.Nastran relate to FBO analysis at Rolls-Royce?"
+print("\n")
+print("="*90)
+print("RETRIEVED SUBGRAPH")
+print("="*90)
 
-rag = GraphRAG(
-    graph=G,
-    llm=llm
-)
-
-result = rag.answer(query)
+visualize_graph(result["retrieved_graph"])
 
 print("\n")
 print("="*90)
-print("GRAPH RAG RETRIEVAL")
+print("FINAL ANSWER")
 print("="*90)
 
-print(f"\nUser Query : {result['query']}")
-
-print("\n")
-print("="*90)
-print("RETRIEVED DOCUMENTS")
-print("="*90)
-
-for node in result["retrieved_nodes"]:
-
-    data = G.nodes[node]
-
-    print(f"\nDocument ID : {node}")
-    print(f"Title       : {data['title']}")
-    print(f"PageRank    : {data['pagerank']:.6f}")
-
-print("\n")
-print("="*90)
-print("DOCUMENT RELATIONSHIPS")
-print("="*90)
-
-retrieved_graph = result["retrieved_graph"]
-
-for source, target in retrieved_graph.edges():
-
-    print(
-        f"{source} ({G.nodes[source]['title']})"
-        f"  ----references---->  "
-        f"{target} ({G.nodes[target]['title']})"
-    )
+print(result["answer"])
