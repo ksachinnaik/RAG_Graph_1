@@ -1,32 +1,48 @@
 # ==========================================
-# Cell 5 : Reference -> doc_id Mapping
+# Cell 6 : Extract Links & Create RDF Triples
 # ==========================================
 
-reference_to_docid = {}
+import re
+
+triples = []
 
 rows = df_clean.collect()
 
 for row in rows:
 
-    reference = row["reference"]
-    doc_id = row["doc_id"]
+    parent_doc_id = row["doc_id"]
+    content = row["content"]
 
-    if reference:
-        reference_to_docid[reference] = doc_id
+    if not content:
+        continue
 
-print(f"Total Documents : {len(reference_to_docid)}")
+    # Extract doc: and doc:wiki references
+    links = re.findall(
+        r'doc:(?:wiki:)?(Temp_Import\.[A-Za-z0-9:_\.\-]+?\.WebHome)',
+        content
+    )
 
-print("\nSample Mapping:\n")
+    for reference in links:
 
-count = 0
+        # Check if referenced document exists
+        if reference in reference_to_docid:
 
-for ref, doc in reference_to_docid.items():
+            child_doc_id = reference_to_docid[reference]
 
-    print(f"Doc ID : {doc}")
-    print(f"Reference : {ref}")
-    print("-" * 60)
+            # Avoid self-loop
+            if parent_doc_id != child_doc_id:
 
-    count += 1
+                triples.append(
+                    (
+                        parent_doc_id,
+                        "references",
+                        child_doc_id
+                    )
+                )
 
-    if count == 5:
-        break
+print(f"Total RDF Triples : {len(triples)}")
+
+print("\nSample RDF Triples\n")
+
+for triple in triples[:10]:
+    print(triple)
