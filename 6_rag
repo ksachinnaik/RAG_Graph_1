@@ -1,83 +1,34 @@
 # ==========================================
-# Cell 12 : GraphRAG Pipeline
+# Cell 14 : Visualization & Final Answer
 # ==========================================
 
-class GraphRAG:
+print("\n")
+print("="*90)
+print("CONNECTED RETRIEVED SUBGRAPH")
+print("="*90)
 
-    def __init__(self, graph, llm):
+retrieved_graph = result["retrieved_graph"]
 
-        self.graph = graph
-        self.llm = llm
+# Remove isolated nodes
+connected_nodes = set()
 
-    def answer(self, query):
+for u, v in retrieved_graph.edges():
+    connected_nodes.add(u)
+    connected_nodes.add(v)
 
-        # -----------------------------------
-        # Graph Retrieval
-        # -----------------------------------
+connected_subgraph = retrieved_graph.subgraph(
+    connected_nodes
+).copy()
 
-        retrieved_nodes, context = graph_retriever(
-            graph=self.graph,
-            query=query,
-            max_hops=2,
-            top_k=5
-        )
+visualize_graph(connected_subgraph)
 
-        # -----------------------------------
-        # Create Retrieved Subgraph
-        # -----------------------------------
+print("\n")
+print("="*90)
+print("FINAL ANSWER")
+print("="*90)
 
-        retrieved_graph = self.graph.subgraph(
-            retrieved_nodes
-        ).copy()
+print("\nQuestion:")
+print(result["query"])
 
-        # -----------------------------------
-        # Prompt
-        # -----------------------------------
-
-        prompt = f"""
-You are an expert assistant.
-
-Answer ONLY from the provided XML document context.
-
-If the answer is not available in the context, say:
-
-'I couldn't find the answer in the provided XML documents.'
-
-=========================
-Context
-=========================
-
-{context}
-
-=========================
-Question
-=========================
-
-{query}
-
-Provide a detailed technical answer.
-"""
-
-        # -----------------------------------
-        # Azure OpenAI
-        # -----------------------------------
-
-        response = self.llm.invoke(prompt)
-
-        # -----------------------------------
-        # Return Everything
-        # -----------------------------------
-
-        return {
-
-            "query": query,
-
-            "answer": response.content,
-
-            "retrieved_nodes": retrieved_nodes,
-
-            "retrieved_graph": retrieved_graph,
-
-            "context": context
-
-        }
+print("\nAnswer:\n")
+print(result["answer"])
