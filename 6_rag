@@ -1,112 +1,108 @@
 # ==========================================================
-# Cell 6 : Extract ALL XML References
+# Cell 7 : Convert Links to RDF Triples
 # ==========================================================
 
-import re
+def find_doc_id(reference):
 
-# ----------------------------------------------------------
-# Normalize extracted references
-# ----------------------------------------------------------
-
-def normalize_reference(ref):
-
-    if ref is None:
+    if reference is None:
         return None
 
-    ref = ref.strip()
-
-    # Remove anchor
-    if "||" in ref:
-        ref = ref.split("||")[0]
-
-    # Remove HTML encoding if present
-    ref = ref.replace("&amp;", "&")
-
-    # Remove accidental spaces
-    ref = ref.strip()
-
-    return ref
-
-
-all_links = {}
-
-rows = df_clean.collect()
-
-for row in rows:
-
-    doc_id = row["doc_id"]
-    reference = row["reference"]
-    content = row["content"]
-
-    links = []
+    reference = reference.strip()
 
     # ------------------------------------------------------
-    # Extract ALL XML references
+    # 1. Exact Match
     # ------------------------------------------------------
-
-    matches = re.findall(
-
-        r"(doc:wiki|doc:Temp_Import|doc):([^[\]\s>]+)",
-
-        content
-
-    )
+    if reference in reference_to_docid:
+        return reference_to_docid[reference]
 
     # ------------------------------------------------------
-    # Convert into relations
+    # 2. Remove Anchor
+    # Example:
+    # Temp_Import.xxx.WebHome||anchor="abc"
     # ------------------------------------------------------
+    ref = reference.split("||")[0]
 
-    for link_type, ref in matches:
-
-        ref = normalize_reference(ref)
-
-        if link_type == "doc:wiki":
-
-            relation = "doc:wiki"
-
-        elif link_type == "doc:Temp_Import":
-
-            relation = "doc:Temp_Import"
-
-        else:
-
-            relation = "doc"
-
-        links.append((relation, ref))
+    if ref in reference_to_docid:
+        return reference_to_docid[ref]
 
     # ------------------------------------------------------
-    # Remove duplicate links
+    # 3. Replace ':' with '.'
+    # Example:
+    # Temp_Import.A:B.WebHome
+    # ->
+    # Temp_Import.A.B.WebHome
     # ------------------------------------------------------
+    ref2 = ref.replace(":", ".")
 
-    links = list(set(links))
-
-    all_links[doc_id] = links
+    if ref2 in reference_to_docid:
+        return reference_to_docid[ref2]
 
     # ------------------------------------------------------
-    # Display
+    # 4. Remove duplicate dots
     # ------------------------------------------------------
+    while ".." in ref2:
+        ref2 = ref2.replace("..", ".")
 
-    print("=" * 80)
-    print(f"Doc ID      : {doc_id}")
-    print(f"Reference   : {reference}")
-    print(f"Total Links : {len(links)}")
-    print("-" * 80)
+    if ref2 in reference_to_docid:
+        return reference_to_docid[ref2]
 
-    for relation, ref in sorted(links):
+    # ------------------------------------------------------
+    # Not Found
+    # ------------------------------------------------------
+    return None
 
-        print(f"{relation:<18} --> {ref}")
 
-    print()
+triples = []
+
+matched = 0
+missing = 0
+
+for parent_doc_id, links in all_links.items():
+
+    for relation, reference in links:
+
+        # Find destination document
+        child_doc_id = find_doc_id(reference)
+
+        # Skip if destination document doesn't exist
+        if child_doc_id is None:
+            missing += 1
+            continue
+
+        matched += 1
+
+        # Avoid self-loops
+        if parent_doc_id == child_doc_id:
+            continue
+
+        # Create RDF Triple
+        triples.append(
+            (
+                parent_doc_id,
+                relation,
+                child_doc_id
+            )
+        )
 
 # ----------------------------------------------------------
-# Summary
+# Remove duplicate triples
 # ----------------------------------------------------------
 
-total_links = sum(len(v) for v in all_links.values())
+triples = list(set(triples))
 
-print("=" * 80)
-print("LINK EXTRACTION SUMMARY")
-print("=" * 80)
-print(f"Documents Processed : {len(all_links)}")
-print(f"Total Links         : {total_links}")
-print("=" * 80)
+# ----------------------------------------------------------
+# Output
+# ----------------------------------------------------------
+
+print("=" * 70)
+print("RDF TRIPLES CREATED")
+print("=" * 70)
+
+print(f"\nMatched References : {matched}")
+print(f"Missing References : {missing}")
+print(f"Total RDF Triples  : {len(triples)}")
+
+print("\nSample RDF Triples:\n")
+
+for triple in triples[:10]:
+    print(triple)
