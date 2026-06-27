@@ -1,86 +1,91 @@
-import re
-from pyspark.sql import Row
-
 # ==========================================================
-# Cell 4 : Clean XML Content
+# Cell 5 : Reference -> Doc_ID Mapping
 # ==========================================================
 
-def clean_text(text):
-    """
-    Clean XML content while preserving GraphRAG links.
+reference_to_docid = {}
 
-    Preserves:
-        [[doc:...]]
-        [[doc:wiki:...]]
-        [[doc:Temp_Import...]]
-    """
+duplicate_count = 0
+duplicate_references = []
 
-    if not text:
-        return ""
+for row in df_clean.toLocalIterator():
+
+    reference = row["reference"]
+    doc_id = row["doc_id"]
+
+    if not reference:
+        continue
+
+    reference = reference.strip()
 
     # ------------------------------------------------------
-    # Remove CDATA markers only
+    # Build all possible aliases for this reference
     # ------------------------------------------------------
 
-    text = re.sub(r"<!\[CDATA\[|\]\]>", "", text)
+    aliases = set()
+
+    # Original reference
+    aliases.add(reference)
+
+    # Remove anchor if present
+    aliases.add(reference.split("||")[0])
+
+    # Remove fragment (#...)
+    aliases.add(reference.split("#")[0])
+
+    # Remove trailing spaces
+    aliases = {a.strip() for a in aliases if a.strip()}
 
     # ------------------------------------------------------
-    # Normalize whitespace
-    # (Does NOT modify document references)
+    # Store aliases
     # ------------------------------------------------------
 
-    text = re.sub(r"\s+", " ", text)
+    for alias in aliases:
 
-    return text.strip()
+        if alias in reference_to_docid:
 
+            duplicate_count += 1
+            duplicate_references.append(alias)
 
-# ==========================================================
-# Create Clean DataFrame
-# ==========================================================
+        reference_to_docid[alias] = doc_id
 
-clean_rows = []
-
-for row in df_raw.collect():
-
-    clean_rows.append(
-
-        Row(
-
-            doc_id=row["doc_id"],
-
-            source_path=row["source_path"],
-
-            title=(row["title"] or "").strip(),
-
-            reference=(row["reference"] or "").strip(),
-
-            version=(row["version"] or "").strip(),
-
-            content_update_date=(row["content_update_date"] or "").strip(),
-
-            content_author=(row["content_author"] or "").strip(),
-
-            # Preserve doc/doc:wiki/doc:Temp_Import references
-            content=clean_text(row["content"])
-
-        )
-
-    )
-
-# ==========================================================
-# Spark DataFrame
-# ==========================================================
-
-df_clean = spark.createDataFrame(clean_rows)
 
 # ==========================================================
 # Summary
 # ==========================================================
 
 print("=" * 80)
-print("XML CLEANING SUMMARY")
-print("=" * 80)
-print(f"Total Clean Documents : {df_clean.count()}")
+print("REFERENCE -> DOC_ID MAPPING")
 print("=" * 80)
 
-display(df_clean)
+print(f"Total XML Documents : {df_clean.count()}")
+print(f"Unique References   : {len(reference_to_docid)}")
+print(f"Duplicate References: {duplicate_count}")
+
+print("=" * 80)
+
+# ==========================================================
+# Sample Mapping
+# ==========================================================
+
+print("\nSample Mapping\n")
+
+for i, (ref, doc) in enumerate(reference_to_docid.items()):
+
+    print(f"Doc ID    : {doc}")
+    print(f"Reference : {ref}")
+    print("-" * 80)
+
+    if i == 9:
+        break
+
+
+# ==========================================================
+# Duplicate Summary
+# ==========================================================
+
+if duplicate_references:
+
+    print("\nDuplicate References (First 10)\n")
+
+    for ref in duplicate_references[:10]:
+        print(ref)
