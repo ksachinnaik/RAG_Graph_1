@@ -1,57 +1,81 @@
 # ==========================================================
-# Cell 7B : Verify Missing References
+# Cell 7C : Verify Missing References (100 Sample)
 # ==========================================================
 
 print("=" * 90)
 print("VERIFYING MISSING REFERENCES")
 print("=" * 90)
 
-loaded_references = set(reference_to_docid.keys())
-
 checked = 0
+found = 0
+not_found = 0
 
-for parent_doc_id, links in all_links.items():
+found_refs = []
+missing_refs = []
 
-    for relation, reference in links:
+for parent_doc, links in all_links.items():
 
-        child_doc_id = reference_to_docid.get(reference)
+    for relation, ref in links:
 
-        if child_doc_id is None:
+        # Skip references already mapped
+        if ref in reference_to_docid:
+            continue
 
-            print(f"\nParent Doc ID : {parent_doc_id}")
-            print(f"Relation      : {relation}")
-            print(f"Reference     : {reference}")
+        checked += 1
 
-            if reference in loaded_references:
-                print("Status        : FOUND")
-            else:
-                print("Status        : NOT FOUND")
+        exists = df_clean.filter(df_clean.reference == ref).count()
 
-                # Try to find similar references
-                similar = []
+        if exists > 0:
+            found += 1
+            found_refs.append((parent_doc, relation, ref))
+        else:
+            not_found += 1
+            missing_refs.append((parent_doc, relation, ref))
 
-                for ref in loaded_references:
+        # Check only first 100 missing references
+        if checked >= 100:
+            break
 
-                    if reference.split(".")[0] == ref.split(".")[0]:
-                        similar.append(ref)
-
-                    if len(similar) >= 5:
-                        break
-
-                if similar:
-                    print("\nClosest Loaded References:")
-
-                    for s in similar:
-                        print("   ", s)
-
-            print("-" * 90)
-
-            checked += 1
-
-            if checked >= 20:
-                break
-
-    if checked >= 20:
+    if checked >= 100:
         break
 
-print("\nFinished Checking.")
+
+print("\n")
+print("=" * 90)
+print("SUMMARY")
+print("=" * 90)
+
+print(f"Checked References : {checked}")
+print(f"Found in XMLs      : {found}")
+print(f"Not Found          : {not_found}")
+
+if checked > 0:
+    print(f"Found %            : {(found/checked)*100:.2f}%")
+    print(f"Missing %          : {(not_found/checked)*100:.2f}%")
+
+print("\n")
+
+print("=" * 90)
+print("FIRST 20 FOUND REFERENCES")
+print("=" * 90)
+
+for parent_doc, relation, ref in found_refs[:20]:
+
+    print(f"Parent Doc : {parent_doc}")
+    print(f"Relation   : {relation}")
+    print(f"Reference  : {ref}")
+    print("-" * 80)
+
+
+print("\n")
+
+print("=" * 90)
+print("FIRST 20 MISSING REFERENCES")
+print("=" * 90)
+
+for parent_doc, relation, ref in missing_refs[:20]:
+
+    print(f"Parent Doc : {parent_doc}")
+    print(f"Relation   : {relation}")
+    print(f"Reference  : {ref}")
+    print("-" * 80)
