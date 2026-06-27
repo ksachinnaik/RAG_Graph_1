@@ -1,54 +1,31 @@
-# =====================================================
-# Cell 7A : Debug RDF Triple Creation
-# =====================================================
+# ==========================================
+# Relation Type Summary
+# ==========================================
 
-print("=" * 90)
-print("RDF TRIPLE DEBUG")
-print("=" * 90)
+doc_count = 0
+wiki_count = 0
+temp_count = 0
 
-total_links = 0
-matched_links = 0
-missing_links = 0
-self_loops = 0
+for links in all_links.values():
 
-missing_references = []
+    for relation, ref in links:
 
-for parent_doc_id, links in all_links.items():
+        if relation == "doc":
+            doc_count += 1
 
-    for relation, reference in links:
+        elif relation == "doc:wiki":
+            wiki_count += 1
 
-        total_links += 1
+        elif relation == "doc:Temp_Import":
+            temp_count += 1
 
-        child_doc_id = reference_to_docid.get(reference)
+print("\n")
+print("=" * 80)
+print("RELATION TYPE SUMMARY")
+print("=" * 80)
 
-        if child_doc_id is None:
-            missing_links += 1
-            missing_references.append((parent_doc_id, relation, reference))
-            continue
+print(f"doc               : {doc_count}")
+print(f"doc:wiki          : {wiki_count}")
+print(f"doc:Temp_Import   : {temp_count}")
 
-        if parent_doc_id == child_doc_id:
-            self_loops += 1
-            continue
-
-        matched_links += 1
-
-print(f"Total Extracted Links : {total_links}")
-print(f"Matched References    : {matched_links}")
-print(f"Missing References    : {missing_links}")
-print(f"Self Loops            : {self_loops}")
-print(f"RDF Triples Created   : {len(triples)}")
-
-print("=" * 90)
-
-# =====================================================
-# Show Missing References
-# =====================================================
-
-print("\nFIRST 50 MISSING REFERENCES\n")
-
-for parent_doc_id, relation, reference in missing_references[:50]:
-
-    print(f"Parent Doc ID : {parent_doc_id}")
-    print(f"Relation      : {relation}")
-    print(f"Reference     : {reference}")
-    print("-" * 90)
+print("=" * 80)
