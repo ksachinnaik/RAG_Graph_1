@@ -1,36 +1,72 @@
 # ==========================================================
-# Cell 5A : Verify Reference Index
+# Cell 7A : RDF Match Debug
 # ==========================================================
 
 print("=" * 80)
-print("REFERENCE INDEX DEBUG")
+print("RDF MATCH DEBUG")
 print("=" * 80)
 
-print(f"Total References Loaded : {len(reference_to_docid)}")
+matched_examples = []
+missing_examples = []
 
-print("\nFirst 20 References\n")
+for parent_doc_id, links in all_links.items():
 
-for i, (ref, doc_id) in enumerate(reference_to_docid.items()):
+    for relation, reference in links:
 
-    print(f"Doc ID    : {doc_id}")
-    print(f"Reference : {repr(ref)}")
+        child = resolve_reference(reference)
+
+        if child is None:
+
+            if len(missing_examples) < 20:
+                missing_examples.append(
+                    (parent_doc_id, relation, reference)
+                )
+
+        else:
+
+            if len(matched_examples) < 20:
+                matched_examples.append(
+                    (
+                        parent_doc_id,
+                        relation,
+                        reference,
+                        child
+                    )
+                )
+
+print("\nFIRST 20 MATCHED\n")
+
+for parent, relation, ref, child in matched_examples:
+
+    print(f"Parent   : {parent}")
+    print(f"Relation : {relation}")
+    print(f"Ref      : {repr(ref)}")
+    print(f"Child ID : {child}")
     print("-" * 80)
 
-    if i == 19:
-        break
-
-
 print("\n")
-
-print("=" * 80)
-print("REFERENCE FORMAT CHECK")
 print("=" * 80)
 
-for i, ref in enumerate(reference_to_docid.keys()):
+print("\nFIRST 20 MISSING\n")
 
-    if "Temp_Import" in ref:
+for parent, relation, ref in missing_examples:
 
-        print(repr(ref))
+    print(f"Parent   : {parent}")
+    print(f"Relation : {relation}")
+    print(f"Ref      : {repr(ref)}")
 
-    if i > 20:
-        break
+    # Show similar loaded references
+    similar = [
+        r for r in reference_to_docid.keys()
+        if ref[:20] in r
+    ]
+
+    if similar:
+        print("Similar Loaded References:")
+
+        for s in similar[:5]:
+            print("   ", repr(s))
+    else:
+        print("No Similar Reference Found")
+
+    print("-" * 80)
