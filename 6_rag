@@ -1,30 +1,54 @@
-# ============================================
-# Cell 6A : Debug Extracted Links
-# ============================================
+# =====================================================
+# Cell 7A : Debug RDF Triple Creation
+# =====================================================
 
-print("=" * 80)
-print("LINK EXTRACTION DEBUG")
-print("=" * 80)
+print("=" * 90)
+print("RDF TRIPLE DEBUG")
+print("=" * 90)
 
 total_links = 0
+matched_links = 0
+missing_links = 0
+self_loops = 0
 
-for doc_id, links in all_links.items():
+missing_references = []
 
-    row = df_clean.filter(df_clean.doc_id == doc_id).first()
+for parent_doc_id, links in all_links.items():
 
-    print(f"\nDoc ID      : {doc_id}")
-    print(f"Reference   : {row['reference']}")
-    print(f"Total Links : {len(links)}")
+    for relation, reference in links:
 
-    total_links += len(links)
+        total_links += 1
 
-    if len(links) == 0:
-        print("   No links found")
-    else:
-        for relation, ref in links:
-            print(f"   {relation:<15} --> {ref}")
+        child_doc_id = reference_to_docid.get(reference)
 
-print("\n" + "=" * 80)
-print(f"Total Documents : {len(all_links)}")
-print(f"Total Links     : {total_links}")
-print("=" * 80)
+        if child_doc_id is None:
+            missing_links += 1
+            missing_references.append((parent_doc_id, relation, reference))
+            continue
+
+        if parent_doc_id == child_doc_id:
+            self_loops += 1
+            continue
+
+        matched_links += 1
+
+print(f"Total Extracted Links : {total_links}")
+print(f"Matched References    : {matched_links}")
+print(f"Missing References    : {missing_links}")
+print(f"Self Loops            : {self_loops}")
+print(f"RDF Triples Created   : {len(triples)}")
+
+print("=" * 90)
+
+# =====================================================
+# Show Missing References
+# =====================================================
+
+print("\nFIRST 50 MISSING REFERENCES\n")
+
+for parent_doc_id, relation, reference in missing_references[:50]:
+
+    print(f"Parent Doc ID : {parent_doc_id}")
+    print(f"Relation      : {relation}")
+    print(f"Reference     : {reference}")
+    print("-" * 90)
