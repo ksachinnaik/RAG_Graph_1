@@ -1,0 +1,156 @@
+# ==========================================================
+# Cell 12A.1 : GraphRAG Class Initialization
+# ==========================================================
+
+from langchain_core.messages import HumanMessage
+
+class GraphRAG:
+
+    def __init__(
+
+        self,
+
+        graph,
+
+        graph_index,
+
+        llm
+
+    ):
+
+        # ---------------------------------------------
+        # Core Objects
+        # ---------------------------------------------
+
+        self.graph = graph
+
+        self.graph_index = graph_index
+
+        self.llm = llm
+
+        # ---------------------------------------------
+        # Retrieval Configuration
+        # ---------------------------------------------
+
+        self.top_k_candidates = 20
+
+        self.max_hops = 2
+
+        self.max_nodes = 50
+
+        self.max_documents = 10
+
+        # ---------------------------------------------
+        # Runtime Variables
+        # ---------------------------------------------
+
+        self.query = None
+
+        self.candidates = []
+
+        self.retrieved_nodes = []
+
+        self.graph_package = None
+
+        self.prompt = ""
+
+        self.answer = ""
+
+        self.retrieved_graph = None
+
+        print("=" * 80)
+        print("GRAPH RAG INITIALIZED")
+        print("=" * 80)
+
+        print(f"Nodes            : {graph.number_of_nodes()}")
+
+        print(f"Edges            : {graph.number_of_edges()}")
+
+        print(f"Graph Index Rows : {len(graph_index)}")
+
+        print(f"Candidate Limit  : {self.top_k_candidates}")
+
+        print(f"Traversal Hops   : {self.max_hops}")
+
+        print(f"Traversal Nodes  : {self.max_nodes}")
+
+        print("=" * 80)
+
+    # ------------------------------------------------------
+    # Configuration
+    # ------------------------------------------------------
+
+    def set_retrieval_config(
+
+        self,
+
+        top_k_candidates=20,
+
+        max_hops=2,
+
+        max_nodes=50,
+
+        max_documents=10
+
+    ):
+
+        self.top_k_candidates = top_k_candidates
+
+        self.max_hops = max_hops
+
+        self.max_nodes = max_nodes
+
+        self.max_documents = max_documents
+
+        print("\nRetrieval Configuration Updated\n")
+
+        print(f"Top Candidates : {self.top_k_candidates}")
+
+        print(f"Max Hops       : {self.max_hops}")
+
+        print(f"Max Nodes      : {self.max_nodes}")
+
+        print(f"Documents      : {self.max_documents}")
+
+    # ------------------------------------------------------
+    # Utility
+    # ------------------------------------------------------
+
+    def graph_statistics(self):
+
+        print("=" * 80)
+
+        print("GRAPH INFORMATION")
+
+        print("=" * 80)
+
+        print(f"Nodes : {self.graph.number_of_nodes()}")
+
+        print(f"Edges : {self.graph.number_of_edges()}")
+
+        print(f"Graph Index : {len(self.graph_index)}")
+
+        print("=" * 80)
+
+    # ------------------------------------------------------
+    # Placeholder Methods
+    # (Implemented in next cells)
+    # ------------------------------------------------------
+
+    def answer_query(self, query):
+
+        raise NotImplementedError(
+            "Implemented in Cell 12A.2"
+        )
+
+    def build_prompt(self):
+
+        raise NotImplementedError(
+            "Implemented in Cell 12B"
+        )
+
+    def generate_answer(self):
+
+        raise NotImplementedError(
+            "Implemented in Cell 12C"
+        )
