@@ -1,11 +1,11 @@
 # ==========================================================
-# Cell 6 : Extract ALL XML References
+# Cell 6 : Universal XML Reference Parser
 # ==========================================================
 
 import re
 
 # ==========================================================
-# Normalize Extracted References
+# Normalize Reference
 # ==========================================================
 
 def normalize_reference(ref):
@@ -16,40 +16,85 @@ def normalize_reference(ref):
     ref = ref.strip()
 
     # Remove anchor
-    ref = ref.split("||")[0]
+    if "||" in ref:
+        ref = ref.split("||")[0]
 
-    # Remove fragment
-    ref = ref.split("#")[0]
+    # Remove section
+    if "#" in ref:
+        ref = ref.split("#")[0]
 
     # Decode HTML entities
     ref = ref.replace("&amp;", "&")
 
-    # Remove accidental spaces
-    ref = re.sub(r"\s+", " ", ref).strip()
+    # Normalize spaces
+    ref = re.sub(r"\s+", " ", ref)
 
-    return ref
-
-
-# ==========================================================
-# Extract Relation Type
-# ==========================================================
-
-def extract_relation(raw_link):
-
-    if raw_link.startswith("doc:wiki:"):
-        return "doc:wiki", raw_link[len("doc:wiki:"):]
-
-    elif raw_link.startswith("doc:Temp_Import:"):
-        return "doc:Temp_Import", raw_link[len("doc:Temp_Import:"):]
-
-    elif raw_link.startswith("doc:"):
-        return "doc", raw_link[len("doc:"):]
-
-    return None, None
+    return ref.strip()
 
 
 # ==========================================================
-# Extract All Links
+# Universal Relation Parser
+# ==========================================================
+
+def parse_link(raw):
+
+    raw = raw.strip()
+
+    # Only process document links
+    if not raw.startswith("doc:"):
+        return None
+
+    body = raw[4:]                     # remove "doc:"
+
+    # ------------------------------------------------------
+    # doc:wiki:
+    # ------------------------------------------------------
+
+    if body.startswith("wiki:"):
+
+        ref = body[len("wiki:"):]
+
+        return (
+            "doc:wiki",
+            normalize_reference(ref)
+        )
+
+    # ------------------------------------------------------
+    # doc:Temp_Import:
+    # ------------------------------------------------------
+
+    if body.startswith("Temp_Import:"):
+
+        ref = body[len("Temp_Import:"):]
+
+        return (
+            "doc:Temp_Import",
+            normalize_reference(ref)
+        )
+
+    # ------------------------------------------------------
+    # doc:Temp_Import.
+    # ------------------------------------------------------
+
+    if body.startswith("Temp_Import."):
+
+        return (
+            "doc:Temp_Import",
+            normalize_reference(body)
+        )
+
+    # ------------------------------------------------------
+    # Normal doc
+    # ------------------------------------------------------
+
+    return (
+        "doc",
+        normalize_reference(body)
+    )
+
+
+# ==========================================================
+# Extract ALL XML Links
 # ==========================================================
 
 all_links = {}
@@ -63,27 +108,26 @@ for row in df_clean.toLocalIterator():
     links = []
 
     # ------------------------------------------------------
-    # Extract EVERYTHING inside [[...]]
+    # Extract every wiki link
     # ------------------------------------------------------
 
-    raw_links = re.findall(r"\[\[(.*?)\]\]", content)
+    wiki_links = re.findall(r"\[\[(.*?)\]\]", content)
 
-    for raw_link in raw_links:
+    for raw in wiki_links:
 
-        relation, ref = extract_relation(raw_link)
+        parsed = parse_link(raw)
 
-        if relation is None:
+        if parsed is None:
             continue
 
-        ref = normalize_reference(ref)
+        relation, ref = parsed
 
-        if not ref:
-            continue
+        if ref:
 
-        links.append((relation, ref))
+            links.append((relation, ref))
 
     # ------------------------------------------------------
-    # Remove duplicate links
+    # Remove duplicates
     # ------------------------------------------------------
 
     links = sorted(set(links))
@@ -101,40 +145,39 @@ for row in df_clean.toLocalIterator():
     print("-" * 80)
 
     for relation, ref in links:
+
         print(f"{relation:<18} --> {ref}")
 
     print()
 
 # ==========================================================
-# Summary
+# Statistics
 # ==========================================================
 
-total_links = sum(len(v) for v in all_links.values())
+relation_counter = {}
 
-doc_count = 0
-wiki_count = 0
-temp_count = 0
+total_links = 0
 
 for links in all_links.values():
 
+    total_links += len(links)
+
     for relation, ref in links:
 
-        if relation == "doc":
-            doc_count += 1
+        relation_counter[relation] = relation_counter.get(relation, 0) + 1
 
-        elif relation == "doc:wiki":
-            wiki_count += 1
-
-        elif relation == "doc:Temp_Import":
-            temp_count += 1
 
 print("=" * 80)
 print("LINK EXTRACTION SUMMARY")
 print("=" * 80)
+
 print(f"Documents Processed : {len(all_links)}")
 print(f"Total Links         : {total_links}")
+
 print()
-print(f"doc                : {doc_count}")
-print(f"doc:wiki           : {wiki_count}")
-print(f"doc:Temp_Import    : {temp_count}")
+
+for relation in sorted(relation_counter):
+
+    print(f"{relation:<20} : {relation_counter[relation]}")
+
 print("=" * 80)
