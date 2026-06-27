@@ -1,169 +1,234 @@
 # ==========================================================
-# Cell 9 : Graph Analytics & Node Ranking
+# Cell 10 : Knowledge Graph Explorer
 # ==========================================================
 
+import matplotlib.pyplot as plt
 import networkx as nx
-import pandas as pd
+
+# ==========================================================
+# Number of Nodes to Visualize
+# ==========================================================
+
+TOP_NODES = 50
+
+# ==========================================================
+# Select Top PageRank Nodes
+# ==========================================================
+
+top_nodes = (
+    graph_index
+    .sort_values("pagerank", ascending=False)
+    .head(TOP_NODES)["doc_id"]
+    .tolist()
+)
+
+subgraph = G.subgraph(top_nodes).copy()
 
 print("=" * 80)
-print("GRAPH ANALYTICS")
+print("KNOWLEDGE GRAPH EXPLORER")
+print("=" * 80)
+
+print(f"Original Nodes      : {G.number_of_nodes()}")
+print(f"Original Edges      : {G.number_of_edges()}")
+
+print(f"Displayed Nodes     : {subgraph.number_of_nodes()}")
+print(f"Displayed Edges     : {subgraph.number_of_edges()}")
+
 print("=" * 80)
 
 # ==========================================================
-# Graph Metrics
+# Layout
 # ==========================================================
 
-pagerank_scores = nx.pagerank(G)
+plt.figure(figsize=(20,15))
 
-degree_scores = dict(G.degree())
-
-in_degree_scores = dict(G.in_degree())
-
-out_degree_scores = dict(G.out_degree())
-
-betweenness_scores = nx.betweenness_centrality(G)
-
-closeness_scores = nx.closeness_centrality(G)
+pos = nx.kamada_kawai_layout(subgraph)
 
 # ==========================================================
-# Build Node Analytics Index
+# Node Sizes (PageRank)
 # ==========================================================
 
-node_index = []
+node_sizes = []
 
-for node in G.nodes():
+for node in subgraph.nodes():
 
-    node_data = G.nodes[node]
+    pr = subgraph.nodes[node]["pagerank"]
 
-    title = node_data.get("title", "")
-    content = node_data.get("content", "")
-    reference = node_data.get("reference", "")
-
-    search_text = f"{title}\n{content}"
-
-    analytics = {
-
-        "doc_id": node,
-
-        "title": title,
-
-        "reference": reference,
-
-        "pagerank": pagerank_scores.get(node, 0),
-
-        "degree": degree_scores.get(node, 0),
-
-        "in_degree": in_degree_scores.get(node, 0),
-
-        "out_degree": out_degree_scores.get(node, 0),
-
-        "betweenness": betweenness_scores.get(node, 0),
-
-        "closeness": closeness_scores.get(node, 0),
-
-        "search_text": search_text
-
-    }
-
-    node_index.append(analytics)
-
-    # Store inside graph
-
-    G.nodes[node]["pagerank"] = analytics["pagerank"]
-
-    G.nodes[node]["degree"] = analytics["degree"]
-
-    G.nodes[node]["in_degree"] = analytics["in_degree"]
-
-    G.nodes[node]["out_degree"] = analytics["out_degree"]
-
-    G.nodes[node]["betweenness"] = analytics["betweenness"]
-
-    G.nodes[node]["closeness"] = analytics["closeness"]
-
-    G.nodes[node]["search_text"] = search_text
+    node_sizes.append(1000 + pr * 60000)
 
 # ==========================================================
-# Convert to DataFrame
+# Node Colors
 # ==========================================================
 
-graph_index = pd.DataFrame(node_index)
+node_colors = []
 
-graph_index = graph_index.sort_values(
-    by="pagerank",
-    ascending=False
-).reset_index(drop=True)
+for node in subgraph.nodes():
+
+    degree = subgraph.nodes[node]["degree"]
+
+    if degree >= 10:
+        node_colors.append("tomato")
+
+    elif degree >= 5:
+        node_colors.append("gold")
+
+    else:
+        node_colors.append("skyblue")
 
 # ==========================================================
-# Summary
+# Edge Colors
 # ==========================================================
 
-print("\n")
-print("=" * 80)
-print("GRAPH ANALYTICS SUMMARY")
-print("=" * 80)
+edge_colors = []
 
-print(f"Total Nodes           : {G.number_of_nodes()}")
+for u, v, data in subgraph.edges(data=True):
 
-print(f"Total Edges           : {G.number_of_edges()}")
+    relation = data["relation"]
 
-print(f"Average Degree        : {graph_index['degree'].mean():.2f}")
+    if relation == "doc":
+        edge_colors.append("black")
 
-print(f"Maximum Degree        : {graph_index['degree'].max()}")
+    elif relation == "doc:wiki":
+        edge_colors.append("blue")
 
-print(f"Maximum PageRank      : {graph_index['pagerank'].max():.6f}")
+    elif relation == "doc:Temp_Import":
+        edge_colors.append("green")
 
-print(f"Minimum PageRank      : {graph_index['pagerank'].min():.6f}")
+    else:
+        edge_colors.append("gray")
 
-print("=" * 80)
+# ==========================================================
+# Draw Nodes
+# ==========================================================
+
+nx.draw_networkx_nodes(
+
+    subgraph,
+
+    pos,
+
+    node_size=node_sizes,
+
+    node_color=node_colors,
+
+    edgecolors="black",
+
+    linewidths=2
+
+)
+
+# ==========================================================
+# Draw Edges
+# ==========================================================
+
+nx.draw_networkx_edges(
+
+    subgraph,
+
+    pos,
+
+    edge_color=edge_colors,
+
+    arrows=True,
+
+    arrowsize=20,
+
+    width=2,
+
+    alpha=0.8
+
+)
+
+# ==========================================================
+# Labels
+# ==========================================================
+
+labels = {}
+
+for node in subgraph.nodes():
+
+    title = subgraph.nodes[node]["title"]
+
+    if len(title) > 18:
+
+        title = title[:18] + "..."
+
+    labels[node] = f"{node}\n{title}"
+
+nx.draw_networkx_labels(
+
+    subgraph,
+
+    pos,
+
+    labels,
+
+    font_size=8,
+
+    font_weight="bold"
+
+)
+
+# ==========================================================
+# Edge Labels
+# ==========================================================
+
+edge_labels = {}
+
+for u,v,data in subgraph.edges(data=True):
+
+    edge_labels[(u,v)] = data["relation"]
+
+nx.draw_networkx_edge_labels(
+
+    subgraph,
+
+    pos,
+
+    edge_labels=edge_labels,
+
+    font_size=7
+
+)
+
+# ==========================================================
+# Title
+# ==========================================================
+
+plt.title(
+
+    "Knowledge Graph (Top PageRank Documents)",
+
+    fontsize=18,
+
+    fontweight="bold"
+
+)
+
+plt.axis("off")
+
+plt.tight_layout()
+
+plt.show()
 
 # ==========================================================
 # Top Important Documents
 # ==========================================================
 
-print("\nTOP 10 IMPORTANT DOCUMENTS\n")
+print("\nTOP IMPORTANT DOCUMENTS\n")
 
 for _, row in graph_index.head(10).iterrows():
 
-    print("-" * 80)
+    print("-"*70)
 
-    print(f"Doc ID         : {row.doc_id}")
+    print(f"Doc ID      : {row.doc_id}")
 
-    print(f"Title          : {row.title}")
+    print(f"Title       : {row.title}")
 
-    print(f"Reference      : {row.reference}")
+    print(f"Reference   : {row.reference}")
 
-    print(f"PageRank       : {row.pagerank:.6f}")
+    print(f"PageRank    : {row.pagerank:.6f}")
 
-    print(f"Degree         : {row.degree}")
+    print(f"Degree      : {row.degree}")
 
-    print(f"In Degree      : {row.in_degree}")
-
-    print(f"Out Degree     : {row.out_degree}")
-
-    print(f"Betweenness    : {row.betweenness:.6f}")
-
-    print(f"Closeness      : {row.closeness:.6f}")
-
-print("-" * 80)
-
-# ==========================================================
-# Verify Graph Index
-# ==========================================================
-
-print("\nGRAPH INDEX SAMPLE\n")
-
-print(
-    graph_index[
-        [
-            "doc_id",
-            "title",
-            "pagerank",
-            "degree",
-            "in_degree",
-            "out_degree"
-        ]
-    ].head(10)
-)
-
-print("\nGraph Analytics Completed Successfully.")
+print("-"*70)
