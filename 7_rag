@@ -1,128 +1,140 @@
 # ==========================================================
-# Cell 5 : Build Reference Resolution Engine
+# Cell 6 : Extract ALL XML References
 # ==========================================================
 
 import re
 
-reference_to_docid = {}
-
-duplicate_count = 0
-duplicate_references = []
-
-
 # ==========================================================
-# Normalize Reference
+# Normalize Extracted References
 # ==========================================================
 
-def generate_reference_aliases(reference):
+def normalize_reference(ref):
 
-    aliases = set()
+    if not ref:
+        return None
 
-    if not reference:
-        return aliases
-
-    reference = reference.strip()
-
-    # Original
-    aliases.add(reference)
+    ref = ref.strip()
 
     # Remove anchor
-    aliases.add(reference.split("||")[0])
+    ref = ref.split("||")[0]
 
-    # Remove section
-    aliases.add(reference.split("#")[0])
+    # Remove fragment
+    ref = ref.split("#")[0]
 
-    # ------------------------------------------------------
-    # Generate aliases from every existing alias
-    # ------------------------------------------------------
+    # Decode HTML entities
+    ref = ref.replace("&amp;", "&")
 
-    expanded = set()
+    # Remove accidental spaces
+    ref = re.sub(r"\s+", " ", ref).strip()
 
-    for alias in aliases:
-
-        alias = alias.strip()
-
-        expanded.add(alias)
-
-        # Remove anchor again (safe)
-        expanded.add(alias.split("||")[0])
-
-        # Remove fragment
-        expanded.add(alias.split("#")[0])
-
-        # Remove trailing slash
-        expanded.add(alias.rstrip("/"))
-
-        # Remove trailing spaces
-        expanded.add(alias.strip())
-
-        # Lowercase version (optional lookup)
-        expanded.add(alias.lower())
-
-        # Uppercase version (optional lookup)
-        expanded.add(alias.upper())
-
-    return {a for a in expanded if a}
+    return ref
 
 
 # ==========================================================
-# Build Dictionary
+# Extract Relation Type
 # ==========================================================
+
+def extract_relation(raw_link):
+
+    if raw_link.startswith("doc:wiki:"):
+        return "doc:wiki", raw_link[len("doc:wiki:"):]
+
+    elif raw_link.startswith("doc:Temp_Import:"):
+        return "doc:Temp_Import", raw_link[len("doc:Temp_Import:"):]
+
+    elif raw_link.startswith("doc:"):
+        return "doc", raw_link[len("doc:"):]
+
+    return None, None
+
+
+# ==========================================================
+# Extract All Links
+# ==========================================================
+
+all_links = {}
 
 for row in df_clean.toLocalIterator():
 
     doc_id = row["doc_id"]
     reference = row["reference"]
+    content = row["content"] or ""
 
-    aliases = generate_reference_aliases(reference)
+    links = []
 
-    for alias in aliases:
+    # ------------------------------------------------------
+    # Extract EVERYTHING inside [[...]]
+    # ------------------------------------------------------
 
-        if alias in reference_to_docid:
+    raw_links = re.findall(r"\[\[(.*?)\]\]", content)
 
-            duplicate_count += 1
-            duplicate_references.append(alias)
+    for raw_link in raw_links:
 
-        reference_to_docid[alias] = doc_id
+        relation, ref = extract_relation(raw_link)
 
+        if relation is None:
+            continue
+
+        ref = normalize_reference(ref)
+
+        if not ref:
+            continue
+
+        links.append((relation, ref))
+
+    # ------------------------------------------------------
+    # Remove duplicate links
+    # ------------------------------------------------------
+
+    links = sorted(set(links))
+
+    all_links[doc_id] = links
+
+    # ------------------------------------------------------
+    # Display
+    # ------------------------------------------------------
+
+    print("=" * 80)
+    print(f"Doc ID      : {doc_id}")
+    print(f"Reference   : {reference}")
+    print(f"Total Links : {len(links)}")
+    print("-" * 80)
+
+    for relation, ref in links:
+        print(f"{relation:<18} --> {ref}")
+
+    print()
 
 # ==========================================================
 # Summary
 # ==========================================================
 
+total_links = sum(len(v) for v in all_links.values())
+
+doc_count = 0
+wiki_count = 0
+temp_count = 0
+
+for links in all_links.values():
+
+    for relation, ref in links:
+
+        if relation == "doc":
+            doc_count += 1
+
+        elif relation == "doc:wiki":
+            wiki_count += 1
+
+        elif relation == "doc:Temp_Import":
+            temp_count += 1
+
 print("=" * 80)
-print("REFERENCE RESOLUTION ENGINE")
+print("LINK EXTRACTION SUMMARY")
 print("=" * 80)
-
-print(f"Total Documents        : {df_clean.count()}")
-print(f"Reference Aliases      : {len(reference_to_docid)}")
-print(f"Duplicate References   : {duplicate_count}")
-
+print(f"Documents Processed : {len(all_links)}")
+print(f"Total Links         : {total_links}")
+print()
+print(f"doc                : {doc_count}")
+print(f"doc:wiki           : {wiki_count}")
+print(f"doc:Temp_Import    : {temp_count}")
 print("=" * 80)
-
-# ==========================================================
-# Sample Reference Mapping
-# ==========================================================
-
-print("\nSample Reference Mapping\n")
-
-for i, (ref, doc) in enumerate(reference_to_docid.items()):
-
-    print(f"Doc ID    : {doc}")
-    print(f"Reference : {ref}")
-    print("-" * 80)
-
-    if i == 9:
-        break
-
-# ==========================================================
-# Duplicate Summary
-# ==========================================================
-
-if duplicate_references:
-
-    print("\nDuplicate References (First 10)\n")
-
-    for ref in duplicate_references[:10]:
-
-        print(ref)
