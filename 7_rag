@@ -1,134 +1,86 @@
-# ==========================================================
-# Cell 3 : XML Discovery & Loading
-# ==========================================================
-
-import os
-import xml.etree.ElementTree as ET
+import re
+from pyspark.sql import Row
 
 # ==========================================================
-# XML ROOT FOLDER
+# Cell 4 : Clean XML Content
 # ==========================================================
 
-ROOT_FOLDER = "/Volumes/knwbt_airr_foundry_dev_catalog/secured/vol/Knowledge Bot/Temp_Import"
+def clean_text(text):
+    """
+    Clean XML content while preserving GraphRAG links.
+
+    Preserves:
+        [[doc:...]]
+        [[doc:wiki:...]]
+        [[doc:Temp_Import...]]
+    """
+
+    if not text:
+        return ""
+
+    # ------------------------------------------------------
+    # Remove CDATA markers only
+    # ------------------------------------------------------
+
+    text = re.sub(r"<!\[CDATA\[|\]\]>", "", text)
+
+    # ------------------------------------------------------
+    # Normalize whitespace
+    # (Does NOT modify document references)
+    # ------------------------------------------------------
+
+    text = re.sub(r"\s+", " ", text)
+
+    return text.strip()
+
 
 # ==========================================================
-# TESTING LIMIT
-#
-# 50    -> Read first 50 XMLs
-# 100   -> Read first 100 XMLs
-# 1000  -> Read first 1000 XMLs
-# None  -> Read ALL XMLs (Production)
+# Create Clean DataFrame
 # ==========================================================
 
-MAX_XML_FILES = 1000
+clean_rows = []
 
-# ==========================================================
-# DISCOVER XML FILES
-# ==========================================================
+for row in df_raw.collect():
 
-xml_paths = []
+    clean_rows.append(
 
-for root, dirs, files in os.walk(ROOT_FOLDER):
+        Row(
 
-    if "WebHome.xml" in files:
-        xml_paths.append(os.path.join(root, "WebHome.xml"))
+            doc_id=row["doc_id"],
 
-xml_paths = sorted(xml_paths)
+            source_path=row["source_path"],
 
-if MAX_XML_FILES is not None:
-    xml_paths = xml_paths[:MAX_XML_FILES]
+            title=(row["title"] or "").strip(),
 
-print("=" * 80)
-print("XML DISCOVERY")
-print("=" * 80)
-print(f"Root Folder      : {ROOT_FOLDER}")
-print(f"XML Files Found  : {len(xml_paths)}")
-print("=" * 80)
+            reference=(row["reference"] or "").strip(),
 
-# ==========================================================
-# READ XML FILES
-# ==========================================================
+            version=(row["version"] or "").strip(),
 
-rows = []
-failed_files = []
+            content_update_date=(row["content_update_date"] or "").strip(),
 
-for idx, path in enumerate(xml_paths):
+            content_author=(row["content_author"] or "").strip(),
 
-    try:
+            # Preserve doc/doc:wiki/doc:Temp_Import references
+            content=clean_text(row["content"])
 
-        tree = ET.parse(path)
-        root = tree.getroot()
-
-        # --------------------------------------------------
-        # XML Fields
-        # --------------------------------------------------
-
-        content = (root.findtext("content") or "").strip()
-        title = (root.findtext("title") or "").strip()
-        version = (root.findtext("version") or "").strip()
-        update_date = (root.findtext("contentUpdateDate") or "").strip()
-
-        author_raw = root.findtext("contentAuthor")
-        author = author_raw.split(":")[-1].strip() if author_raw else ""
-
-        # --------------------------------------------------
-        # Root Attribute
-        # --------------------------------------------------
-
-        reference = (root.get("reference") or "").strip()
-
-        # --------------------------------------------------
-        # Store Document
-        # --------------------------------------------------
-
-        rows.append(
-            Row(
-                doc_id=idx,
-                source_path=path,
-                title=title,
-                reference=reference,
-                version=version,
-                content_update_date=update_date,
-                content_author=author,
-                content=content
-            )
         )
 
-    except Exception as e:
-
-        failed_files.append(
-            {
-                "path": path,
-                "error": str(e)
-            }
-        )
+    )
 
 # ==========================================================
-# CREATE SPARK DATAFRAME
+# Spark DataFrame
 # ==========================================================
 
-df_raw = spark.createDataFrame(rows)
+df_clean = spark.createDataFrame(clean_rows)
 
 # ==========================================================
-# SUMMARY
+# Summary
 # ==========================================================
 
-print("\n")
 print("=" * 80)
-print("XML LOADING SUMMARY")
+print("XML CLEANING SUMMARY")
 print("=" * 80)
-print(f"Successfully Loaded : {len(rows)}")
-print(f"Failed Files        : {len(failed_files)}")
+print(f"Total Clean Documents : {df_clean.count()}")
 print("=" * 80)
 
-if failed_files:
-
-    print("\nSample Failed Files\n")
-
-    for item in failed_files[:5]:
-
-        print(f"Path  : {item['path']}")
-        print(f"Error : {item['error']}")
-        print("-" * 80)
-
-display(df_raw)
+display(df_clean)
