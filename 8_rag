@@ -161,3 +161,265 @@ def retrieve_candidates(
         )
 
     return candidates[:top_k]
+
+
+
+
+
+# ==========================================================
+# Cell 11B : Priority Knowledge Graph Traversal
+# ==========================================================
+
+from collections import deque
+
+# ----------------------------------------------------------
+# Graph Traversal
+# ----------------------------------------------------------
+
+def traverse_graph(
+
+    graph,
+
+    candidates,
+
+    max_hops=2,
+
+    max_nodes=50
+
+):
+
+    print("="*80)
+    print("GRAPH TRAVERSAL")
+    print("="*80)
+
+    visited = set()
+
+    queue = deque()
+
+    retrieved = {}
+
+    # ------------------------------------------------------
+    # Initialize Queue
+    # ------------------------------------------------------
+
+    for item in candidates:
+
+        queue.append(
+
+            (
+
+                item["doc_id"],
+
+                0,
+
+                None,
+
+                "ROOT"
+
+            )
+
+        )
+
+    # ------------------------------------------------------
+    # Breadth First Traversal
+    # ------------------------------------------------------
+
+    while queue:
+
+        current, hop, parent, relation = queue.popleft()
+
+        if current in visited:
+            continue
+
+        if hop > max_hops:
+            continue
+
+        visited.add(current)
+
+        node = graph.nodes[current]
+
+        pagerank = node["pagerank"]
+
+        degree = node["degree"]
+
+        traversal_score = (
+
+            pagerank * 100 +
+
+            degree * 2 -
+
+            hop * 5
+
+        )
+
+        retrieved[current] = {
+
+            "doc_id": current,
+
+            "title": node["title"],
+
+            "reference": node["reference"],
+
+            "pagerank": pagerank,
+
+            "degree": degree,
+
+            "hop": hop,
+
+            "parent": parent,
+
+            "relation": relation,
+
+            "score": traversal_score
+
+        }
+
+        # --------------------------------------------------
+        # Outgoing References
+        # --------------------------------------------------
+
+        outgoing = []
+
+        for neighbor in graph.successors(current):
+
+            edge = graph[current][neighbor]
+
+            outgoing.append(
+
+                (
+
+                    neighbor,
+
+                    edge["relation"],
+
+                    graph.nodes[neighbor]["pagerank"]
+
+                )
+
+            )
+
+        outgoing.sort(
+
+            key=lambda x:x[2],
+
+            reverse=True
+
+        )
+
+        for neighbor, rel, _ in outgoing:
+
+            if neighbor not in visited:
+
+                queue.append(
+
+                    (
+
+                        neighbor,
+
+                        hop+1,
+
+                        current,
+
+                        rel
+
+                    )
+
+                )
+
+        # --------------------------------------------------
+        # Incoming References
+        # --------------------------------------------------
+
+        incoming = []
+
+        for neighbor in graph.predecessors(current):
+
+            edge = graph[neighbor][current]
+
+            incoming.append(
+
+                (
+
+                    neighbor,
+
+                    edge["relation"],
+
+                    graph.nodes[neighbor]["pagerank"]
+
+                )
+
+            )
+
+        incoming.sort(
+
+            key=lambda x:x[2],
+
+            reverse=True
+
+        )
+
+        for neighbor, rel, _ in incoming:
+
+            if neighbor not in visited:
+
+                queue.append(
+
+                    (
+
+                        neighbor,
+
+                        hop+1,
+
+                        current,
+
+                        rel
+
+                    )
+
+                )
+
+        if len(retrieved) >= max_nodes:
+
+            break
+
+    # ------------------------------------------------------
+    # Final Ranking
+    # ------------------------------------------------------
+
+    ranked = sorted(
+
+        retrieved.values(),
+
+        key=lambda x:x["score"],
+
+        reverse=True
+
+    )
+
+    print()
+
+    print("="*80)
+
+    print("RETRIEVED SUBGRAPH")
+
+    print("="*80)
+
+    for node in ranked:
+
+        print(
+
+            f'Doc:{node["doc_id"]:4} '
+
+            f'Hop:{node["hop"]} '
+
+            f'Score:{node["score"]:8.2f} '
+
+            f'Parent:{node["parent"]} '
+
+            f'Relation:{node["relation"]:<18} '
+
+            f'{node["title"]}'
+
+        )
+
+    return ranked
