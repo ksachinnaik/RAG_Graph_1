@@ -1,111 +1,110 @@
+import os
+import xml.etree.ElementTree as ET
+
 # ==========================================================
-# Cell 10 : Visualize Graph RAG Knowledge Graph
+# XML ROOT FOLDER
 # ==========================================================
 
-import matplotlib.pyplot as plt
-import networkx as nx
+ROOT_FOLDER = "/Volumes/knwbt_airr_foundry_dev_catalog/secured/vol/Knowledge Bot/Temp_Import/"
 
-def visualize_graph(graph):
+# ==========================================================
+# TESTING LIMIT
+# ==========================================================
+# Change this while testing
+# 50  -> Read first 50 XMLs
+# 100 -> Read first 100 XMLs
+# None -> Read ALL XMLs (Production)
 
-    plt.figure(figsize=(22,16))
+MAX_XML_FILES = 50
 
-    # ------------------------------------------------------
-    # Layout
-    # ------------------------------------------------------
-    pos = nx.kamada_kawai_layout(graph)
+# ==========================================================
+# DISCOVER XML FILES
+# ==========================================================
 
-    # ------------------------------------------------------
-    # Draw Nodes
-    # ------------------------------------------------------
-    nx.draw_networkx_nodes(
-        graph,
-        pos,
-        node_size=5000,
-        node_color="#B7E1F7",
-        edgecolors="black",
-        linewidths=2
-    )
+xml_paths = []
 
-    # ------------------------------------------------------
-    # Draw Directed Edges
-    # ------------------------------------------------------
-    nx.draw_networkx_edges(
-        graph,
-        pos,
-        arrows=True,
-        arrowstyle="-|>",
-        arrowsize=35,
-        width=2.5,
-        edge_color="black",
-        connectionstyle="arc3,rad=0.10",
-        min_source_margin=25,
-        min_target_margin=25
-    )
+for root, dirs, files in os.walk(ROOT_FOLDER):
 
-    # ------------------------------------------------------
-    # Node Labels
-    # ------------------------------------------------------
-    node_labels = {}
+    if "WebHome.xml" in files:
+        xml_paths.append(os.path.join(root, "WebHome.xml"))
 
-    for node in graph.nodes():
+xml_paths = sorted(xml_paths)
 
-        title = graph.nodes[node]["title"]
+if MAX_XML_FILES is not None:
+    xml_paths = xml_paths[:MAX_XML_FILES]
 
-        if len(title) > 30:
-            title = title[:30] + "..."
+print("=" * 70)
+print("XML DISCOVERY")
+print("=" * 70)
+print(f"Root Folder      : {ROOT_FOLDER}")
+print(f"XML Files Found  : {len(xml_paths)}")
+print("=" * 70)
 
-        node_labels[node] = f"{node}\n{title}"
+# ==========================================================
+# READ XML FILES
+# ==========================================================
 
-    nx.draw_networkx_labels(
-        graph,
-        pos,
-        labels=node_labels,
-        font_size=9,
-        font_weight="bold"
-    )
+rows = []
 
-    # ------------------------------------------------------
-    # Relationship Labels
-    # ------------------------------------------------------
-    edge_labels = {}
+failed_files = []
 
-    for source, target, data in graph.edges(data=True):
+for idx, path in enumerate(xml_paths):
 
-        relation = data.get("relation", "")
+    try:
 
-        edge_labels[(source, target)] = relation
+        tree = ET.parse(path)
+        root = tree.getroot()
 
-    nx.draw_networkx_edge_labels(
-        graph,
-        pos,
-        edge_labels=edge_labels,
-        font_size=8,
-        rotate=False,
-        label_pos=0.5,
-        bbox=dict(
-            facecolor="white",
-            edgecolor="gray",
-            alpha=0.9,
-            boxstyle="round,pad=0.2"
+        # XML Fields
+        content = root.findtext("content") or ""
+        title = root.findtext("title") or ""
+        version = root.findtext("version")
+        update_date = root.findtext("contentUpdateDate")
+
+        author_raw = root.findtext("contentAuthor")
+        author = author_raw.split(":")[-1] if author_raw else None
+
+        # Root Attribute
+        reference = root.get("reference")
+
+        rows.append(
+            Row(
+                doc_id=idx,
+                source=path,
+                title=title,
+                reference=reference,
+                version=version,
+                content_update_date=update_date,
+                content_author=author,
+                content=content
+            )
         )
-    )
 
-    # ------------------------------------------------------
-    # Title
-    # ------------------------------------------------------
-    plt.title(
-        "Graph RAG Knowledge Graph (XML Document Relationships)",
-        fontsize=18,
-        fontweight="bold"
-    )
+    except Exception as e:
 
-    plt.axis("off")
-    plt.tight_layout()
-    plt.show()
+        failed_files.append((path, str(e)))
 
+# ==========================================================
+# CREATE SPARK DATAFRAME
+# ==========================================================
 
-# ----------------------------------------------------------
-# Visualize Complete Knowledge Graph
-# ----------------------------------------------------------
+df_raw = spark.createDataFrame(rows)
 
-visualize_graph(G)
+print("\n")
+print("=" * 70)
+print("XML LOADING SUMMARY")
+print("=" * 70)
+print(f"Successfully Loaded : {len(rows)}")
+print(f"Failed              : {len(failed_files)}")
+print("=" * 70)
+
+if failed_files:
+
+    print("\nSample Failed Files\n")
+
+    for path, error in failed_files[:5]:
+        print(path)
+        print(error)
+        print("-" * 60)
+
+display(df_raw)
