@@ -1,43 +1,80 @@
 # ==========================================================
-# Cell 5 : Reference -> Doc_ID Mapping
+# Cell 5 : Build Reference Resolution Engine
 # ==========================================================
+
+import re
 
 reference_to_docid = {}
 
 duplicate_count = 0
 duplicate_references = []
 
-for row in df_clean.toLocalIterator():
 
-    reference = row["reference"]
-    doc_id = row["doc_id"]
+# ==========================================================
+# Normalize Reference
+# ==========================================================
 
-    if not reference:
-        continue
-
-    reference = reference.strip()
-
-    # ------------------------------------------------------
-    # Build all possible aliases for this reference
-    # ------------------------------------------------------
+def generate_reference_aliases(reference):
 
     aliases = set()
 
-    # Original reference
+    if not reference:
+        return aliases
+
+    reference = reference.strip()
+
+    # Original
     aliases.add(reference)
 
-    # Remove anchor if present
+    # Remove anchor
     aliases.add(reference.split("||")[0])
 
-    # Remove fragment (#...)
+    # Remove section
     aliases.add(reference.split("#")[0])
 
-    # Remove trailing spaces
-    aliases = {a.strip() for a in aliases if a.strip()}
+    # ------------------------------------------------------
+    # Generate aliases from every existing alias
+    # ------------------------------------------------------
 
-    # ------------------------------------------------------
-    # Store aliases
-    # ------------------------------------------------------
+    expanded = set()
+
+    for alias in aliases:
+
+        alias = alias.strip()
+
+        expanded.add(alias)
+
+        # Remove anchor again (safe)
+        expanded.add(alias.split("||")[0])
+
+        # Remove fragment
+        expanded.add(alias.split("#")[0])
+
+        # Remove trailing slash
+        expanded.add(alias.rstrip("/"))
+
+        # Remove trailing spaces
+        expanded.add(alias.strip())
+
+        # Lowercase version (optional lookup)
+        expanded.add(alias.lower())
+
+        # Uppercase version (optional lookup)
+        expanded.add(alias.upper())
+
+    return {a for a in expanded if a}
+
+
+# ==========================================================
+# Build Dictionary
+# ==========================================================
+
+for row in df_clean.toLocalIterator():
+
+    doc_id = row["doc_id"]
+    reference = row["reference"]
+
+    aliases = generate_reference_aliases(reference)
 
     for alias in aliases:
 
@@ -54,20 +91,20 @@ for row in df_clean.toLocalIterator():
 # ==========================================================
 
 print("=" * 80)
-print("REFERENCE -> DOC_ID MAPPING")
+print("REFERENCE RESOLUTION ENGINE")
 print("=" * 80)
 
-print(f"Total XML Documents : {df_clean.count()}")
-print(f"Unique References   : {len(reference_to_docid)}")
-print(f"Duplicate References: {duplicate_count}")
+print(f"Total Documents        : {df_clean.count()}")
+print(f"Reference Aliases      : {len(reference_to_docid)}")
+print(f"Duplicate References   : {duplicate_count}")
 
 print("=" * 80)
 
 # ==========================================================
-# Sample Mapping
+# Sample Reference Mapping
 # ==========================================================
 
-print("\nSample Mapping\n")
+print("\nSample Reference Mapping\n")
 
 for i, (ref, doc) in enumerate(reference_to_docid.items()):
 
@@ -78,7 +115,6 @@ for i, (ref, doc) in enumerate(reference_to_docid.items()):
     if i == 9:
         break
 
-
 # ==========================================================
 # Duplicate Summary
 # ==========================================================
@@ -88,4 +124,5 @@ if duplicate_references:
     print("\nDuplicate References (First 10)\n")
 
     for ref in duplicate_references[:10]:
+
         print(ref)
