@@ -423,3 +423,158 @@ def traverse_graph(
         )
 
     return ranked
+
+
+
+
+
+# ==========================================================
+# Cell 11C : Knowledge Graph Context Builder
+# ==========================================================
+
+def build_graph_context(
+
+    graph,
+
+    retrieved_nodes,
+
+    max_documents=10,
+
+    max_chars=1200
+
+):
+
+    print("=" * 80)
+    print("KNOWLEDGE GRAPH CONTEXT")
+    print("=" * 80)
+
+    context_documents = []
+
+    visited = set()
+
+    # ------------------------------------------------------
+    # Sort by Retrieval Score
+    # ------------------------------------------------------
+
+    retrieved_nodes = sorted(
+
+        retrieved_nodes,
+
+        key=lambda x: x["score"],
+
+        reverse=True
+
+    )
+
+    # ------------------------------------------------------
+    # Build Context
+    # ------------------------------------------------------
+
+    for item in retrieved_nodes:
+
+        node_id = item["doc_id"]
+
+        if node_id in visited:
+            continue
+
+        visited.add(node_id)
+
+        node = graph.nodes[node_id]
+
+        content = node.get("content", "")
+
+        if len(content) > max_chars:
+            content = content[:max_chars] + "..."
+
+        context_documents.append(
+
+            {
+
+                "doc_id": node_id,
+
+                "title": node.get("title", ""),
+
+                "reference": node.get("reference", ""),
+
+                "hop": item["hop"],
+
+                "parent": item["parent"],
+
+                "relation": item["relation"],
+
+                "pagerank": item["pagerank"],
+
+                "degree": item["degree"],
+
+                "score": item["score"],
+
+                "content": content
+
+            }
+
+        )
+
+        if len(context_documents) >= max_documents:
+            break
+
+    # ------------------------------------------------------
+    # Print Summary
+    # ------------------------------------------------------
+
+    print(f"Documents Selected : {len(context_documents)}")
+
+    print("\n")
+
+    print("=" * 80)
+
+    print("DOCUMENT SUMMARY")
+
+    print("=" * 80)
+
+    for doc in context_documents:
+
+        print(f"Doc ID      : {doc['doc_id']}")
+        print(f"Title       : {doc['title']}")
+        print(f"Hop         : {doc['hop']}")
+        print(f"Relation    : {doc['relation']}")
+        print(f"Parent      : {doc['parent']}")
+        print(f"PageRank    : {doc['pagerank']:.6f}")
+        print(f"Degree      : {doc['degree']}")
+        print(f"Score       : {doc['score']:.2f}")
+        print("-" * 80)
+
+    # ------------------------------------------------------
+    # Build Final Context String
+    # ------------------------------------------------------
+
+    context = ""
+
+    for doc in context_documents:
+
+        context += f"""
+====================================================
+Document ID : {doc['doc_id']}
+Title       : {doc['title']}
+Reference   : {doc['reference']}
+Hop         : {doc['hop']}
+Relation    : {doc['relation']}
+Parent      : {doc['parent']}
+PageRank    : {doc['pagerank']:.6f}
+Degree      : {doc['degree']}
+
+Content:
+{doc['content']}
+
+"""
+
+    print("\n")
+
+    print("=" * 80)
+
+    print("GRAPH CONTEXT READY")
+
+    print("=" * 80)
+
+    print(f"Total Context Size : {len(context):,} characters")
+
+    return context
