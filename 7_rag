@@ -1,15 +1,16 @@
 # ==========================================================
-# Cell 9 : Graph Analytics
+# Cell 9 : Graph Analytics & Node Ranking
 # ==========================================================
 
 import networkx as nx
+import pandas as pd
 
 print("=" * 80)
 print("GRAPH ANALYTICS")
 print("=" * 80)
 
 # ==========================================================
-# Compute Graph Metrics
+# Graph Metrics
 # ==========================================================
 
 pagerank_scores = nx.pagerank(G)
@@ -25,110 +26,144 @@ betweenness_scores = nx.betweenness_centrality(G)
 closeness_scores = nx.closeness_centrality(G)
 
 # ==========================================================
-# Store Analytics inside Graph Nodes
+# Build Node Analytics Index
 # ==========================================================
+
+node_index = []
 
 for node in G.nodes():
 
-    G.nodes[node]["pagerank"] = pagerank_scores.get(node, 0.0)
+    node_data = G.nodes[node]
 
-    G.nodes[node]["degree"] = degree_scores.get(node, 0)
+    title = node_data.get("title", "")
+    content = node_data.get("content", "")
+    reference = node_data.get("reference", "")
 
-    G.nodes[node]["in_degree"] = in_degree_scores.get(node, 0)
+    search_text = f"{title}\n{content}"
 
-    G.nodes[node]["out_degree"] = out_degree_scores.get(node, 0)
+    analytics = {
 
-    G.nodes[node]["betweenness"] = betweenness_scores.get(node, 0.0)
+        "doc_id": node,
 
-    G.nodes[node]["closeness"] = closeness_scores.get(node, 0.0)
+        "title": title,
 
-    # Search text for retrieval
-    title = G.nodes[node].get("title", "")
-    content = G.nodes[node].get("content", "")
+        "reference": reference,
 
-    G.nodes[node]["search_text"] = (
-        title + "\n" + content
-    )
+        "pagerank": pagerank_scores.get(node, 0),
 
-print("\nAnalytics stored successfully.\n")
+        "degree": degree_scores.get(node, 0),
+
+        "in_degree": in_degree_scores.get(node, 0),
+
+        "out_degree": out_degree_scores.get(node, 0),
+
+        "betweenness": betweenness_scores.get(node, 0),
+
+        "closeness": closeness_scores.get(node, 0),
+
+        "search_text": search_text
+
+    }
+
+    node_index.append(analytics)
+
+    # Store inside graph
+
+    G.nodes[node]["pagerank"] = analytics["pagerank"]
+
+    G.nodes[node]["degree"] = analytics["degree"]
+
+    G.nodes[node]["in_degree"] = analytics["in_degree"]
+
+    G.nodes[node]["out_degree"] = analytics["out_degree"]
+
+    G.nodes[node]["betweenness"] = analytics["betweenness"]
+
+    G.nodes[node]["closeness"] = analytics["closeness"]
+
+    G.nodes[node]["search_text"] = search_text
 
 # ==========================================================
-# Top PageRank Documents
+# Convert to DataFrame
 # ==========================================================
 
-print("=" * 80)
-print("TOP 10 IMPORTANT DOCUMENTS")
-print("=" * 80)
+graph_index = pd.DataFrame(node_index)
 
-top_nodes = sorted(
-    pagerank_scores.items(),
-    key=lambda x: x[1],
-    reverse=True
-)
-
-for node_id, score in top_nodes[:10]:
-
-    node = G.nodes[node_id]
-
-    print(f"Doc ID         : {node_id}")
-    print(f"Title          : {node['title']}")
-    print(f"Reference      : {node['reference']}")
-    print(f"PageRank       : {score:.6f}")
-    print(f"Degree         : {node['degree']}")
-    print(f"In Degree      : {node['in_degree']}")
-    print(f"Out Degree     : {node['out_degree']}")
-    print(f"Betweenness    : {node['betweenness']:.6f}")
-    print(f"Closeness      : {node['closeness']:.6f}")
-    print("-" * 80)
+graph_index = graph_index.sort_values(
+    by="pagerank",
+    ascending=False
+).reset_index(drop=True)
 
 # ==========================================================
-# Graph Statistics
+# Summary
 # ==========================================================
 
 print("\n")
 print("=" * 80)
-print("GRAPH SUMMARY")
+print("GRAPH ANALYTICS SUMMARY")
 print("=" * 80)
 
 print(f"Total Nodes           : {G.number_of_nodes()}")
+
 print(f"Total Edges           : {G.number_of_edges()}")
 
-density = nx.density(G)
+print(f"Average Degree        : {graph_index['degree'].mean():.2f}")
 
-print(f"Graph Density         : {density:.6f}")
+print(f"Maximum Degree        : {graph_index['degree'].max()}")
 
-if G.number_of_nodes() > 0:
-    avg_degree = (
-        sum(degree_scores.values())
-        / G.number_of_nodes()
-    )
-else:
-    avg_degree = 0
+print(f"Maximum PageRank      : {graph_index['pagerank'].max():.6f}")
 
-print(f"Average Degree        : {avg_degree:.2f}")
-
-print(f"Maximum Degree        : {max(degree_scores.values())}")
-
-print(f"Maximum PageRank      : {max(pagerank_scores.values()):.6f}")
+print(f"Minimum PageRank      : {graph_index['pagerank'].min():.6f}")
 
 print("=" * 80)
 
 # ==========================================================
-# Verify Stored Analytics
+# Top Important Documents
 # ==========================================================
 
-print("\nVERIFY NODE ANALYTICS\n")
+print("\nTOP 10 IMPORTANT DOCUMENTS\n")
 
-for node_id in list(G.nodes())[:5]:
+for _, row in graph_index.head(10).iterrows():
 
-    node = G.nodes[node_id]
-
-    print(f"Doc ID      : {node_id}")
-    print(f"Title       : {node['title']}")
-    print(f"PageRank    : {node['pagerank']:.6f}")
-    print(f"Degree      : {node['degree']}")
-    print(f"In Degree   : {node['in_degree']}")
-    print(f"Out Degree  : {node['out_degree']}")
     print("-" * 80)
+
+    print(f"Doc ID         : {row.doc_id}")
+
+    print(f"Title          : {row.title}")
+
+    print(f"Reference      : {row.reference}")
+
+    print(f"PageRank       : {row.pagerank:.6f}")
+
+    print(f"Degree         : {row.degree}")
+
+    print(f"In Degree      : {row.in_degree}")
+
+    print(f"Out Degree     : {row.out_degree}")
+
+    print(f"Betweenness    : {row.betweenness:.6f}")
+
+    print(f"Closeness      : {row.closeness:.6f}")
+
+print("-" * 80)
+
+# ==========================================================
+# Verify Graph Index
+# ==========================================================
+
+print("\nGRAPH INDEX SAMPLE\n")
+
+print(
+    graph_index[
+        [
+            "doc_id",
+            "title",
+            "pagerank",
+            "degree",
+            "in_degree",
+            "out_degree"
+        ]
+    ].head(10)
+)
 
 print("\nGraph Analytics Completed Successfully.")
