@@ -1,47 +1,112 @@
 # ==========================================================
-# Cell 5 : Reference -> Doc_ID Mapping
+# Cell 6 : Extract ALL XML References
 # ==========================================================
 
-reference_to_docid = {}
+import re
 
-duplicate_count = 0
+# ----------------------------------------------------------
+# Normalize extracted references
+# ----------------------------------------------------------
 
-for row in df_clean.toLocalIterator():
+def normalize_reference(ref):
 
-    reference = row["reference"]
+    if ref is None:
+        return None
+
+    ref = ref.strip()
+
+    # Remove anchor
+    if "||" in ref:
+        ref = ref.split("||")[0]
+
+    # Remove HTML encoding if present
+    ref = ref.replace("&amp;", "&")
+
+    # Remove accidental spaces
+    ref = ref.strip()
+
+    return ref
+
+
+all_links = {}
+
+rows = df_clean.collect()
+
+for row in rows:
+
     doc_id = row["doc_id"]
+    reference = row["reference"]
+    content = row["content"]
 
-    if reference is None:
-        continue
+    links = []
 
-    # Canonical reference
-    reference = reference.strip()
+    # ------------------------------------------------------
+    # Extract ALL XML references
+    # ------------------------------------------------------
 
-    if reference == "":
-        continue
+    matches = re.findall(
 
-    if reference in reference_to_docid:
-        duplicate_count += 1
-        print(f"Duplicate Reference Found : {reference}")
+        r"(doc:wiki|doc:Temp_Import|doc):([^[\]\s>]+)",
 
-    reference_to_docid[reference] = doc_id
+        content
 
+    )
 
-print("=" * 80)
-print("REFERENCE -> DOC_ID MAPPING")
-print("=" * 80)
+    # ------------------------------------------------------
+    # Convert into relations
+    # ------------------------------------------------------
 
-print(f"Total XML Documents  : {df_clean.count()}")
-print(f"Unique References    : {len(reference_to_docid)}")
-print(f"Duplicate References : {duplicate_count}")
+    for link_type, ref in matches:
 
-print("\nSample Mapping\n")
+        ref = normalize_reference(ref)
 
-for i, (ref, doc) in enumerate(reference_to_docid.items()):
+        if link_type == "doc:wiki":
 
-    print(f"Doc ID     : {doc}")
-    print(f"Reference  : {ref}")
+            relation = "doc:wiki"
+
+        elif link_type == "doc:Temp_Import":
+
+            relation = "doc:Temp_Import"
+
+        else:
+
+            relation = "doc"
+
+        links.append((relation, ref))
+
+    # ------------------------------------------------------
+    # Remove duplicate links
+    # ------------------------------------------------------
+
+    links = list(set(links))
+
+    all_links[doc_id] = links
+
+    # ------------------------------------------------------
+    # Display
+    # ------------------------------------------------------
+
+    print("=" * 80)
+    print(f"Doc ID      : {doc_id}")
+    print(f"Reference   : {reference}")
+    print(f"Total Links : {len(links)}")
     print("-" * 80)
 
-    if i == 9:
-        break
+    for relation, ref in sorted(links):
+
+        print(f"{relation:<18} --> {ref}")
+
+    print()
+
+# ----------------------------------------------------------
+# Summary
+# ----------------------------------------------------------
+
+total_links = sum(len(v) for v in all_links.values())
+
+print("=" * 80)
+print("LINK EXTRACTION SUMMARY")
+print("=" * 80)
+print(f"Documents Processed : {len(all_links)}")
+print(f"Total Links         : {total_links}")
+print("=" * 80)
