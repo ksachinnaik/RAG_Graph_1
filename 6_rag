@@ -2,81 +2,97 @@
 # Cell 7 : Convert Links to RDF Triples
 # ==========================================================
 
-def find_doc_id(reference):
+def resolve_reference(reference):
+    """
+    Resolve a reference to its document ID using the
+    aliases created in Cell 5.
+    """
 
-    if reference is None:
+    if not reference:
         return None
 
     reference = reference.strip()
 
-    # ------------------------------------------------------
-    # 1. Exact Match
-    # ------------------------------------------------------
-    if reference in reference_to_docid:
-        return reference_to_docid[reference]
+    candidates = []
 
-    # ------------------------------------------------------
-    # 2. Remove Anchor
-    # Example:
-    # Temp_Import.xxx.WebHome||anchor="abc"
-    # ------------------------------------------------------
-    ref = reference.split("||")[0]
+    # Original
+    candidates.append(reference)
 
-    if ref in reference_to_docid:
-        return reference_to_docid[ref]
+    # Remove anchor
+    candidates.append(reference.split("||")[0])
 
-    # ------------------------------------------------------
-    # 3. Replace ':' with '.'
-    # Example:
-    # Temp_Import.A:B.WebHome
-    # ->
-    # Temp_Import.A.B.WebHome
-    # ------------------------------------------------------
-    ref2 = ref.replace(":", ".")
+    # Remove section
+    candidates.append(reference.split("#")[0])
 
-    if ref2 in reference_to_docid:
-        return reference_to_docid[ref2]
+    # Replace ':' with '.'
+    candidates.append(reference.replace(":", "."))
 
-    # ------------------------------------------------------
-    # 4. Remove duplicate dots
-    # ------------------------------------------------------
-    while ".." in ref2:
-        ref2 = ref2.replace("..", ".")
+    # Remove duplicate dots
+    candidates.extend([c.replace("..", ".") for c in candidates])
 
-    if ref2 in reference_to_docid:
-        return reference_to_docid[ref2]
+    # Remove trailing slash
+    candidates.extend([c.rstrip("/") for c in candidates])
 
-    # ------------------------------------------------------
-    # Not Found
-    # ------------------------------------------------------
+    # Remove spaces
+    candidates.extend([c.strip() for c in candidates])
+
+    # Remove duplicates while preserving order
+    seen = set()
+    final_candidates = []
+
+    for c in candidates:
+        if c and c not in seen:
+            seen.add(c)
+            final_candidates.append(c)
+
+    # Lookup
+    for c in final_candidates:
+        if c in reference_to_docid:
+            return reference_to_docid[c]
+
     return None
 
 
-triples = []
+# ==========================================================
+# Build RDF Triples
+# ==========================================================
+
+triples = set()
 
 matched = 0
 missing = 0
+self_loops = 0
+
+missing_references = []
+
+relation_summary = {}
 
 for parent_doc_id, links in all_links.items():
 
     for relation, reference in links:
 
-        # Find destination document
-        child_doc_id = find_doc_id(reference)
+        child_doc_id = resolve_reference(reference)
 
-        # Skip if destination document doesn't exist
         if child_doc_id is None:
+
             missing += 1
+
+            missing_references.append(
+                (parent_doc_id, relation, reference)
+            )
+
             continue
 
         matched += 1
 
-        # Avoid self-loops
+        relation_summary[relation] = relation_summary.get(relation, 0) + 1
+
         if parent_doc_id == child_doc_id:
+
+            self_loops += 1
             continue
 
-        # Create RDF Triple
-        triples.append(
+        triples.add(
             (
                 parent_doc_id,
                 relation,
@@ -84,51 +100,51 @@ for parent_doc_id, links in all_links.items():
             )
         )
 
-# ----------------------------------------------------------
-# Remove duplicate triples
-# ----------------------------------------------------------
 
-triples = list(set(triples))
+# ==========================================================
+# Summary
+# ==========================================================
 
-# ----------------------------------------------------------
-# Output
-# ----------------------------------------------------------
+print("=" * 80)
+print("RDF TRIPLE SUMMARY")
+print("=" * 80)
 
-print("=" * 70)
-print("RDF TRIPLES CREATED")
-print("=" * 70)
-
-print(f"\nMatched References : {matched}")
+print(f"Matched References : {matched}")
 print(f"Missing References : {missing}")
-print(f"Total RDF Triples  : {len(triples)}")
+print(f"Self Loops         : {self_loops}")
+print(f"Unique RDF Triples : {len(triples)}")
 
-print("\nSample RDF Triples:\n")
+if matched + missing > 0:
+    print(f"Match Rate         : {(matched/(matched+missing))*100:.2f}%")
 
+print("=" * 80)
 
+print("\nRelation Summary\n")
 
+for relation, count in sorted(relation_summary.items()):
+    print(f"{relation:<20} : {count}")
 
-You are an expert engineering assistant.
+print("=" * 80)
 
-The context below has been retrieved from a Knowledge Graph built from interconnected XML documents.
+print("\nSample RDF Triples\n")
 
-The retrieved documents are linked through document references
-(doc, doc:wiki, doc:Temp_Import).
-
-Treat all retrieved XML documents as one connected source of knowledge.
-
-Use information from multiple retrieved documents whenever necessary.
-
-If two connected documents together answer the question,
-combine the information into a single answer.
-
-Do not use outside knowledge.
-
-If the answer cannot be found in the retrieved XML context,
-reply exactly:
-
-"I couldn't find the answer in the provided XML documents."
-
-Always provide a detailed technical answer.
+triples = sorted(list(triples))
 
 for triple in triples[:10]:
     print(triple)
+
+# ==========================================================
+# Missing References
+# ==========================================================
+
+if missing_references:
+
+    print("\nFirst 20 Missing References\n")
+    print("=" * 80)
+
+    for parent, relation, ref in missing_references[:20]:
+
+        print(f"Parent Doc : {parent}")
+        print(f"Relation   : {relation}")
+        print(f"Reference  : {ref}")
+        print("-" * 80)
