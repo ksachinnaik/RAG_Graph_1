@@ -1,81 +1,47 @@
 # ==========================================================
-# Cell 7C : Verify Missing References (100 Sample)
+# Cell 5 : Reference -> Doc_ID Mapping
 # ==========================================================
 
-print("=" * 90)
-print("VERIFYING MISSING REFERENCES")
-print("=" * 90)
+reference_to_docid = {}
 
-checked = 0
-found = 0
-not_found = 0
+duplicate_count = 0
 
-found_refs = []
-missing_refs = []
+for row in df_clean.toLocalIterator():
 
-for parent_doc, links in all_links.items():
+    reference = row["reference"]
+    doc_id = row["doc_id"]
 
-    for relation, ref in links:
+    if reference is None:
+        continue
 
-        # Skip references already mapped
-        if ref in reference_to_docid:
-            continue
+    # Canonical reference
+    reference = reference.strip()
 
-        checked += 1
+    if reference == "":
+        continue
 
-        exists = df_clean.filter(df_clean.reference == ref).count()
+    if reference in reference_to_docid:
+        duplicate_count += 1
+        print(f"Duplicate Reference Found : {reference}")
 
-        if exists > 0:
-            found += 1
-            found_refs.append((parent_doc, relation, ref))
-        else:
-            not_found += 1
-            missing_refs.append((parent_doc, relation, ref))
+    reference_to_docid[reference] = doc_id
 
-        # Check only first 100 missing references
-        if checked >= 100:
-            break
 
-    if checked >= 100:
+print("=" * 80)
+print("REFERENCE -> DOC_ID MAPPING")
+print("=" * 80)
+
+print(f"Total XML Documents  : {df_clean.count()}")
+print(f"Unique References    : {len(reference_to_docid)}")
+print(f"Duplicate References : {duplicate_count}")
+
+print("\nSample Mapping\n")
+
+for i, (ref, doc) in enumerate(reference_to_docid.items()):
+
+    print(f"Doc ID     : {doc}")
+    print(f"Reference  : {ref}")
+    print("-" * 80)
+
+    if i == 9:
         break
-
-
-print("\n")
-print("=" * 90)
-print("SUMMARY")
-print("=" * 90)
-
-print(f"Checked References : {checked}")
-print(f"Found in XMLs      : {found}")
-print(f"Not Found          : {not_found}")
-
-if checked > 0:
-    print(f"Found %            : {(found/checked)*100:.2f}%")
-    print(f"Missing %          : {(not_found/checked)*100:.2f}%")
-
-print("\n")
-
-print("=" * 90)
-print("FIRST 20 FOUND REFERENCES")
-print("=" * 90)
-
-for parent_doc, relation, ref in found_refs[:20]:
-
-    print(f"Parent Doc : {parent_doc}")
-    print(f"Relation   : {relation}")
-    print(f"Reference  : {ref}")
-    print("-" * 80)
-
-
-print("\n")
-
-print("=" * 90)
-print("FIRST 20 MISSING REFERENCES")
-print("=" * 90)
-
-for parent_doc, relation, ref in missing_refs[:20]:
-
-    print(f"Parent Doc : {parent_doc}")
-    print(f"Relation   : {relation}")
-    print(f"Reference  : {ref}")
-    print("-" * 80)
