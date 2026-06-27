@@ -1,19 +1,16 @@
 # ==========================================================
-# Cell 10 : Knowledge Graph Explorer
+# Cell 10 : Knowledge Graph Visualization
 # ==========================================================
 
 import matplotlib.pyplot as plt
 import networkx as nx
+from matplotlib.lines import Line2D
 
 # ==========================================================
-# Number of Nodes to Visualize
+# Select Top Important Nodes
 # ==========================================================
 
 TOP_NODES = 50
-
-# ==========================================================
-# Select Top PageRank Nodes
-# ==========================================================
 
 top_nodes = (
     graph_index
@@ -25,27 +22,32 @@ top_nodes = (
 subgraph = G.subgraph(top_nodes).copy()
 
 print("=" * 80)
-print("KNOWLEDGE GRAPH EXPLORER")
+print("KNOWLEDGE GRAPH VISUALIZATION")
 print("=" * 80)
 
-print(f"Original Nodes      : {G.number_of_nodes()}")
-print(f"Original Edges      : {G.number_of_edges()}")
+print(f"Original Nodes  : {G.number_of_nodes()}")
+print(f"Original Edges  : {G.number_of_edges()}")
 
-print(f"Displayed Nodes     : {subgraph.number_of_nodes()}")
-print(f"Displayed Edges     : {subgraph.number_of_edges()}")
+print(f"Shown Nodes     : {subgraph.number_of_nodes()}")
+print(f"Shown Edges     : {subgraph.number_of_edges()}")
 
 print("=" * 80)
 
 # ==========================================================
-# Layout
+# Graph Layout
 # ==========================================================
 
-plt.figure(figsize=(20,15))
+pos = nx.spring_layout(
+    subgraph,
+    seed=42,
+    k=2,
+    iterations=300
+)
 
-pos = nx.kamada_kawai_layout(subgraph)
+plt.figure(figsize=(22,16))
 
 # ==========================================================
-# Node Sizes (PageRank)
+# Node Size (PageRank)
 # ==========================================================
 
 node_sizes = []
@@ -54,10 +56,10 @@ for node in subgraph.nodes():
 
     pr = subgraph.nodes[node]["pagerank"]
 
-    node_sizes.append(1000 + pr * 60000)
+    node_sizes.append(2500 + pr * 100000)
 
 # ==========================================================
-# Node Colors
+# Node Color (Degree)
 # ==========================================================
 
 node_colors = []
@@ -67,13 +69,13 @@ for node in subgraph.nodes():
     degree = subgraph.nodes[node]["degree"]
 
     if degree >= 10:
-        node_colors.append("tomato")
+        node_colors.append("#ff6b6b")
 
     elif degree >= 5:
-        node_colors.append("gold")
+        node_colors.append("#ffd93d")
 
     else:
-        node_colors.append("skyblue")
+        node_colors.append("#87ceeb")
 
 # ==========================================================
 # Edge Colors
@@ -81,7 +83,7 @@ for node in subgraph.nodes():
 
 edge_colors = []
 
-for u, v, data in subgraph.edges(data=True):
+for _, _, data in subgraph.edges(data=True):
 
     relation = data["relation"]
 
@@ -118,7 +120,7 @@ nx.draw_networkx_nodes(
 )
 
 # ==========================================================
-# Draw Edges
+# Draw Directed Edges
 # ==========================================================
 
 nx.draw_networkx_edges(
@@ -127,20 +129,28 @@ nx.draw_networkx_edges(
 
     pos,
 
-    edge_color=edge_colors,
-
     arrows=True,
 
-    arrowsize=20,
+    arrowstyle="-|>",
 
-    width=2,
+    arrowsize=30,
 
-    alpha=0.8
+    width=2.5,
+
+    edge_color=edge_colors,
+
+    alpha=0.9,
+
+    connectionstyle="arc3,rad=0.08",
+
+    min_source_margin=20,
+
+    min_target_margin=20
 
 )
 
 # ==========================================================
-# Labels
+# Node Labels
 # ==========================================================
 
 labels = {}
@@ -150,7 +160,6 @@ for node in subgraph.nodes():
     title = subgraph.nodes[node]["title"]
 
     if len(title) > 18:
-
         title = title[:18] + "..."
 
     labels[node] = f"{node}\n{title}"
@@ -175,9 +184,9 @@ nx.draw_networkx_labels(
 
 edge_labels = {}
 
-for u,v,data in subgraph.edges(data=True):
+for u, v, data in subgraph.edges(data=True):
 
-    edge_labels[(u,v)] = data["relation"]
+    edge_labels[(u, v)] = data["relation"]
 
 nx.draw_networkx_edge_labels(
 
@@ -187,7 +196,89 @@ nx.draw_networkx_edge_labels(
 
     edge_labels=edge_labels,
 
-    font_size=7
+    font_size=8,
+
+    rotate=False,
+
+    label_pos=0.5,
+
+    bbox=dict(
+
+        facecolor="white",
+
+        edgecolor="gray",
+
+        alpha=0.85,
+
+        boxstyle="round,pad=0.2"
+
+    )
+
+)
+
+# ==========================================================
+# Legend
+# ==========================================================
+
+legend = [
+
+    Line2D(
+        [0],[0],
+        marker='o',
+        color='w',
+        label='Normal Document',
+        markerfacecolor='#87ceeb',
+        markersize=12
+    ),
+
+    Line2D(
+        [0],[0],
+        marker='o',
+        color='w',
+        label='Highly Connected',
+        markerfacecolor='#ffd93d',
+        markersize=12
+    ),
+
+    Line2D(
+        [0],[0],
+        marker='o',
+        color='w',
+        label='Hub Document',
+        markerfacecolor='#ff6b6b',
+        markersize=12
+    ),
+
+    Line2D(
+        [0],[0],
+        color='black',
+        lw=2,
+        label='doc'
+    ),
+
+    Line2D(
+        [0],[0],
+        color='blue',
+        lw=2,
+        label='doc:wiki'
+    ),
+
+    Line2D(
+        [0],[0],
+        color='green',
+        lw=2,
+        label='doc:Temp_Import'
+    )
+
+]
+
+plt.legend(
+
+    handles=legend,
+
+    loc="upper left",
+
+    fontsize=10
 
 )
 
@@ -197,9 +288,25 @@ nx.draw_networkx_edge_labels(
 
 plt.title(
 
-    "Knowledge Graph (Top PageRank Documents)",
+    "Knowledge Graph (Document Relationships)",
 
-    fontsize=18,
+    fontsize=20,
+
+    fontweight="bold"
+
+)
+
+plt.figtext(
+
+    0.02,
+
+    0.02,
+
+    "Arrow Direction :  A  --->  B  means Document A refers to Document B",
+
+    fontsize=11,
+
+    color="darkred",
 
     fontweight="bold"
 
@@ -219,7 +326,7 @@ print("\nTOP IMPORTANT DOCUMENTS\n")
 
 for _, row in graph_index.head(10).iterrows():
 
-    print("-"*70)
+    print("-"*80)
 
     print(f"Doc ID      : {row.doc_id}")
 
@@ -231,4 +338,4 @@ for _, row in graph_index.head(10).iterrows():
 
     print(f"Degree      : {row.degree}")
 
-print("-"*70)
+print("-"*80)
