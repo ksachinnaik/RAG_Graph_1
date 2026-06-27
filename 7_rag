@@ -1,1 +1,134 @@
+# ==========================================================
+# Cell 3 : XML Discovery & Loading
+# ==========================================================
 
+import os
+import xml.etree.ElementTree as ET
+
+# ==========================================================
+# XML ROOT FOLDER
+# ==========================================================
+
+ROOT_FOLDER = "/Volumes/knwbt_airr_foundry_dev_catalog/secured/vol/Knowledge Bot/Temp_Import"
+
+# ==========================================================
+# TESTING LIMIT
+#
+# 50    -> Read first 50 XMLs
+# 100   -> Read first 100 XMLs
+# 1000  -> Read first 1000 XMLs
+# None  -> Read ALL XMLs (Production)
+# ==========================================================
+
+MAX_XML_FILES = 1000
+
+# ==========================================================
+# DISCOVER XML FILES
+# ==========================================================
+
+xml_paths = []
+
+for root, dirs, files in os.walk(ROOT_FOLDER):
+
+    if "WebHome.xml" in files:
+        xml_paths.append(os.path.join(root, "WebHome.xml"))
+
+xml_paths = sorted(xml_paths)
+
+if MAX_XML_FILES is not None:
+    xml_paths = xml_paths[:MAX_XML_FILES]
+
+print("=" * 80)
+print("XML DISCOVERY")
+print("=" * 80)
+print(f"Root Folder      : {ROOT_FOLDER}")
+print(f"XML Files Found  : {len(xml_paths)}")
+print("=" * 80)
+
+# ==========================================================
+# READ XML FILES
+# ==========================================================
+
+rows = []
+failed_files = []
+
+for idx, path in enumerate(xml_paths):
+
+    try:
+
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        # --------------------------------------------------
+        # XML Fields
+        # --------------------------------------------------
+
+        content = (root.findtext("content") or "").strip()
+        title = (root.findtext("title") or "").strip()
+        version = (root.findtext("version") or "").strip()
+        update_date = (root.findtext("contentUpdateDate") or "").strip()
+
+        author_raw = root.findtext("contentAuthor")
+        author = author_raw.split(":")[-1].strip() if author_raw else ""
+
+        # --------------------------------------------------
+        # Root Attribute
+        # --------------------------------------------------
+
+        reference = (root.get("reference") or "").strip()
+
+        # --------------------------------------------------
+        # Store Document
+        # --------------------------------------------------
+
+        rows.append(
+            Row(
+                doc_id=idx,
+                source_path=path,
+                title=title,
+                reference=reference,
+                version=version,
+                content_update_date=update_date,
+                content_author=author,
+                content=content
+            )
+        )
+
+    except Exception as e:
+
+        failed_files.append(
+            {
+                "path": path,
+                "error": str(e)
+            }
+        )
+
+# ==========================================================
+# CREATE SPARK DATAFRAME
+# ==========================================================
+
+df_raw = spark.createDataFrame(rows)
+
+# ==========================================================
+# SUMMARY
+# ==========================================================
+
+print("\n")
+print("=" * 80)
+print("XML LOADING SUMMARY")
+print("=" * 80)
+print(f"Successfully Loaded : {len(rows)}")
+print(f"Failed Files        : {len(failed_files)}")
+print("=" * 80)
+
+if failed_files:
+
+    print("\nSample Failed Files\n")
+
+    for item in failed_files[:5]:
+
+        print(f"Path  : {item['path']}")
+        print(f"Error : {item['error']}")
+        print("-" * 80)
+
+display(df_raw)
