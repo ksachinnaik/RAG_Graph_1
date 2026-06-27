@@ -1,183 +1,36 @@
 # ==========================================================
-# Cell 6 : Universal XML Reference Parser
+# Cell 5A : Verify Reference Index
 # ==========================================================
 
-import re
+print("=" * 80)
+print("REFERENCE INDEX DEBUG")
+print("=" * 80)
 
-# ==========================================================
-# Normalize Reference
-# ==========================================================
+print(f"Total References Loaded : {len(reference_to_docid)}")
 
-def normalize_reference(ref):
+print("\nFirst 20 References\n")
 
-    if not ref:
-        return None
+for i, (ref, doc_id) in enumerate(reference_to_docid.items()):
 
-    ref = ref.strip()
-
-    # Remove anchor
-    if "||" in ref:
-        ref = ref.split("||")[0]
-
-    # Remove section
-    if "#" in ref:
-        ref = ref.split("#")[0]
-
-    # Decode HTML entities
-    ref = ref.replace("&amp;", "&")
-
-    # Normalize spaces
-    ref = re.sub(r"\s+", " ", ref)
-
-    return ref.strip()
-
-
-# ==========================================================
-# Universal Relation Parser
-# ==========================================================
-
-def parse_link(raw):
-
-    raw = raw.strip()
-
-    # Only process document links
-    if not raw.startswith("doc:"):
-        return None
-
-    body = raw[4:]                     # remove "doc:"
-
-    # ------------------------------------------------------
-    # doc:wiki:
-    # ------------------------------------------------------
-
-    if body.startswith("wiki:"):
-
-        ref = body[len("wiki:"):]
-
-        return (
-            "doc:wiki",
-            normalize_reference(ref)
-        )
-
-    # ------------------------------------------------------
-    # doc:Temp_Import:
-    # ------------------------------------------------------
-
-    if body.startswith("Temp_Import:"):
-
-        ref = body[len("Temp_Import:"):]
-
-        return (
-            "doc:Temp_Import",
-            normalize_reference(ref)
-        )
-
-    # ------------------------------------------------------
-    # doc:Temp_Import.
-    # ------------------------------------------------------
-
-    if body.startswith("Temp_Import."):
-
-        return (
-            "doc:Temp_Import",
-            normalize_reference(body)
-        )
-
-    # ------------------------------------------------------
-    # Normal doc
-    # ------------------------------------------------------
-
-    return (
-        "doc",
-        normalize_reference(body)
-    )
-
-
-# ==========================================================
-# Extract ALL XML Links
-# ==========================================================
-
-all_links = {}
-
-for row in df_clean.toLocalIterator():
-
-    doc_id = row["doc_id"]
-    reference = row["reference"]
-    content = row["content"] or ""
-
-    links = []
-
-    # ------------------------------------------------------
-    # Extract every wiki link
-    # ------------------------------------------------------
-
-    wiki_links = re.findall(r"\[\[(.*?)\]\]", content)
-
-    for raw in wiki_links:
-
-        parsed = parse_link(raw)
-
-        if parsed is None:
-            continue
-
-        relation, ref = parsed
-
-        if ref:
-
-            links.append((relation, ref))
-
-    # ------------------------------------------------------
-    # Remove duplicates
-    # ------------------------------------------------------
-
-    links = sorted(set(links))
-
-    all_links[doc_id] = links
-
-    # ------------------------------------------------------
-    # Display
-    # ------------------------------------------------------
-
-    print("=" * 80)
-    print(f"Doc ID      : {doc_id}")
-    print(f"Reference   : {reference}")
-    print(f"Total Links : {len(links)}")
+    print(f"Doc ID    : {doc_id}")
+    print(f"Reference : {repr(ref)}")
     print("-" * 80)
 
-    for relation, ref in links:
+    if i == 19:
+        break
 
-        print(f"{relation:<18} --> {ref}")
 
-    print()
-
-# ==========================================================
-# Statistics
-# ==========================================================
-
-relation_counter = {}
-
-total_links = 0
-
-for links in all_links.values():
-
-    total_links += len(links)
-
-    for relation, ref in links:
-
-        relation_counter[relation] = relation_counter.get(relation, 0) + 1
-
+print("\n")
 
 print("=" * 80)
-print("LINK EXTRACTION SUMMARY")
+print("REFERENCE FORMAT CHECK")
 print("=" * 80)
 
-print(f"Documents Processed : {len(all_links)}")
-print(f"Total Links         : {total_links}")
+for i, ref in enumerate(reference_to_docid.keys()):
 
-print()
+    if "Temp_Import" in ref:
 
-for relation in sorted(relation_counter):
+        print(repr(ref))
 
-    print(f"{relation:<20} : {relation_counter[relation]}")
-
-print("=" * 80)
+    if i > 20:
+        break
