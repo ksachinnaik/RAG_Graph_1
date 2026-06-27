@@ -1,72 +1,229 @@
 # ==========================================================
-# Cell 7A : RDF Match Debug
+# Cell 8 : Build NetworkX Knowledge Graph
+# ==========================================================
+
+import networkx as nx
+from collections import Counter
+
+# ==========================================================
+# Create Directed Knowledge Graph
+# ==========================================================
+
+G = nx.DiGraph()
+
+# ==========================================================
+# Add Document Nodes
 # ==========================================================
 
 print("=" * 80)
-print("RDF MATCH DEBUG")
+print("ADDING DOCUMENT NODES")
 print("=" * 80)
 
-matched_examples = []
-missing_examples = []
+node_count = 0
 
-for parent_doc_id, links in all_links.items():
+for row in df_clean.toLocalIterator():
 
-    for relation, reference in links:
+    G.add_node(
+        row["doc_id"],
 
-        child = resolve_reference(reference)
+        title=row["title"],
+        reference=row["reference"],
+        version=row["version"],
+        author=row["content_author"],
+        update_date=row["content_update_date"],
+        source_path=row["source_path"],
+        content=row["content"]
+    )
 
-        if child is None:
+    node_count += 1
 
-            if len(missing_examples) < 20:
-                missing_examples.append(
-                    (parent_doc_id, relation, reference)
-                )
+print(f"Nodes Added : {node_count}")
 
-        else:
+# ==========================================================
+# Add RDF Relationships
+# ==========================================================
 
-            if len(matched_examples) < 20:
-                matched_examples.append(
-                    (
-                        parent_doc_id,
-                        relation,
-                        reference,
-                        child
-                    )
-                )
+print("\n" + "=" * 80)
+print("ADDING RDF EDGES")
+print("=" * 80)
 
-print("\nFIRST 20 MATCHED\n")
+edge_count = 0
+relation_counter = Counter()
 
-for parent, relation, ref, child in matched_examples:
+invalid_edges = []
 
-    print(f"Parent   : {parent}")
-    print(f"Relation : {relation}")
-    print(f"Ref      : {repr(ref)}")
-    print(f"Child ID : {child}")
-    print("-" * 80)
+for subject, relation, obj in triples:
+
+    if subject not in G:
+        invalid_edges.append((subject, relation, obj))
+        continue
+
+    if obj not in G:
+        invalid_edges.append((subject, relation, obj))
+        continue
+
+    G.add_edge(
+        subject,
+        obj,
+        relation=relation
+    )
+
+    relation_counter[relation] += 1
+    edge_count += 1
+
+print(f"Edges Added   : {edge_count}")
+print(f"Invalid Edges : {len(invalid_edges)}")
+
+# ==========================================================
+# Graph Statistics
+# ==========================================================
+
+isolated_nodes = list(nx.isolates(G))
+
+connected_nodes = G.number_of_nodes() - len(isolated_nodes)
+
+density = nx.density(G)
+
+avg_degree = 0
+
+if G.number_of_nodes() > 0:
+    avg_degree = (
+        sum(dict(G.degree()).values())
+        / G.number_of_nodes()
+    )
 
 print("\n")
 print("=" * 80)
+print("KNOWLEDGE GRAPH SUMMARY")
+print("=" * 80)
 
-print("\nFIRST 20 MISSING\n")
+print(f"Total Nodes           : {G.number_of_nodes()}")
+print(f"Total Edges           : {G.number_of_edges()}")
+print(f"Connected Nodes       : {connected_nodes}")
+print(f"Isolated Nodes        : {len(isolated_nodes)}")
+print(f"Average Degree        : {avg_degree:.2f}")
+print(f"Graph Density         : {density:.6f}")
 
-for parent, relation, ref in missing_examples:
+print("=" * 80)
 
-    print(f"Parent   : {parent}")
-    print(f"Relation : {relation}")
-    print(f"Ref      : {repr(ref)}")
+# ==========================================================
+# Relation Summary
+# ==========================================================
 
-    # Show similar loaded references
-    similar = [
-        r for r in reference_to_docid.keys()
-        if ref[:20] in r
-    ]
+print("\nRELATION DISTRIBUTION\n")
 
-    if similar:
-        print("Similar Loaded References:")
+total_edges = max(1, G.number_of_edges())
 
-        for s in similar[:5]:
-            print("   ", repr(s))
-    else:
-        print("No Similar Reference Found")
+for relation in sorted(relation_counter):
+
+    count = relation_counter[relation]
+
+    percent = (count / total_edges) * 100
+
+    print(
+        f"{relation:<20}"
+        f"{count:>8}"
+        f" ({percent:6.2f}%)"
+    )
+
+print("=" * 80)
+
+# ==========================================================
+# Top Connected Documents
+# ==========================================================
+
+print("\nTOP CONNECTED DOCUMENTS\n")
+
+degree_list = sorted(
+    G.degree(),
+    key=lambda x: x[1],
+    reverse=True
+)
+
+for node_id, degree in degree_list[:10]:
+
+    data = G.nodes[node_id]
+
+    print(
+        f"Doc {node_id:<5}"
+        f"Degree={degree:<4}"
+        f"Title={data['title']}"
+    )
+
+print("=" * 80)
+
+# ==========================================================
+# Sample Nodes
+# ==========================================================
+
+print("\nSAMPLE NODES\n")
+
+for i, (node_id, data) in enumerate(G.nodes(data=True)):
 
     print("-" * 80)
+
+    print(f"Node ID      : {node_id}")
+    print(f"Title        : {data['title']}")
+    print(f"Reference    : {data['reference']}")
+    print(f"Version      : {data['version']}")
+    print(f"Author       : {data['author']}")
+
+    if i == 4:
+        break
+
+# ==========================================================
+# Sample Edges
+# ==========================================================
+
+print("\nSAMPLE EDGES\n")
+
+for i, (src, dst, data) in enumerate(G.edges(data=True)):
+
+    print(
+        f"{src} "
+        f"----[{data['relation']}]----> "
+        f"{dst}"
+    )
+
+    if i == 9:
+        break
+
+# ==========================================================
+# Invalid RDF Triples
+# ==========================================================
+
+if invalid_edges:
+
+    print("\n")
+    print("=" * 80)
+    print("INVALID RDF TRIPLES (First 10)")
+    print("=" * 80)
+
+    for subject, relation, obj in invalid_edges[:10]:
+
+        print(
+            f"{subject}"
+            f" --{relation}--> "
+            f"{obj}"
+        )
+
+# ==========================================================
+# Graph Validation
+# ==========================================================
+
+print("\n")
+print("=" * 80)
+print("GRAPH VALIDATION")
+print("=" * 80)
+
+print(f"Graph Type            : {type(G).__name__}")
+print(f"Directed Graph        : {G.is_directed()}")
+print(f"Self Loops            : {nx.number_of_selfloops(G)}")
+print(f"Number of Components  : {nx.number_weakly_connected_components(G)}")
+
+if len(invalid_edges) == 0:
+    print("Graph Status          : PASS")
+else:
+    print("Graph Status          : WARNING")
+
+print("=" * 80)
