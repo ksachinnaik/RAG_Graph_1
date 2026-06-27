@@ -104,5 +104,31 @@ print(f"Total RDF Triples  : {len(triples)}")
 
 print("\nSample RDF Triples:\n")
 
+
+
+
+You are an expert engineering assistant.
+
+The context below has been retrieved from a Knowledge Graph built from interconnected XML documents.
+
+The retrieved documents are linked through document references
+(doc, doc:wiki, doc:Temp_Import).
+
+Treat all retrieved XML documents as one connected source of knowledge.
+
+Use information from multiple retrieved documents whenever necessary.
+
+If two connected documents together answer the question,
+combine the information into a single answer.
+
+Do not use outside knowledge.
+
+If the answer cannot be found in the retrieved XML context,
+reply exactly:
+
+"I couldn't find the answer in the provided XML documents."
+
+Always provide a detailed technical answer.
+
 for triple in triples[:10]:
     print(triple)
