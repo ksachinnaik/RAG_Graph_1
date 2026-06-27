@@ -1,50 +1,30 @@
-# ==========================================================
-# Cell 5 : Reference -> Doc_ID Mapping
-# ==========================================================
-
-reference_to_docid = {}
-
-duplicate_count = 0
-
-# ==========================================
-# Build Mapping
-# ==========================================
-
-for row in df_clean.toLocalIterator():
-
-    reference = row["reference"]
-    doc_id = row["doc_id"]
-
-    if reference and reference.strip():
-
-        if reference in reference_to_docid:
-            duplicate_count += 1
-            print(f"Duplicate Reference Found : {reference}")
-
-        reference_to_docid[reference] = doc_id
-
-
-# ==========================================
-# Summary
-# ==========================================
+# ============================================
+# Cell 6A : Debug Extracted Links
+# ============================================
 
 print("=" * 80)
-print("REFERENCE  --->  DOC_ID MAPPING")
+print("LINK EXTRACTION DEBUG")
 print("=" * 80)
 
-print(f"\nTotal XML Documents  : {df_clean.count()}")
-print(f"Unique References    : {len(reference_to_docid)}")
-print(f"Duplicate References : {duplicate_count}")
+total_links = 0
 
-print("\nComplete Reference Mapping:\n")
+for doc_id, links in all_links.items():
 
+    row = df_clean.filter(df_clean.doc_id == doc_id).first()
 
-# ==========================================
-# Display All Mappings (Testing)
-# ==========================================
+    print(f"\nDoc ID      : {doc_id}")
+    print(f"Reference   : {row['reference']}")
+    print(f"Total Links : {len(links)}")
 
-for reference, doc_id in reference_to_docid.items():
+    total_links += len(links)
 
-    print(f"Doc ID     : {doc_id}")
-    print(f"Reference  : {reference}")
-    print("-" * 80)
+    if len(links) == 0:
+        print("   No links found")
+    else:
+        for relation, ref in links:
+            print(f"   {relation:<15} --> {ref}")
+
+print("\n" + "=" * 80)
+print(f"Total Documents : {len(all_links)}")
+print(f"Total Links     : {total_links}")
+print("=" * 80)
