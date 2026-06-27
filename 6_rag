@@ -1,15 +1,14 @@
-# ==========================================
-# Cell 7A : RDF Mapping Debug
-# ==========================================
+# ==========================================================
+# Cell 7B : Verify Missing References
+# ==========================================================
 
-matched = 0
-missing = 0
+print("=" * 90)
+print("VERIFYING MISSING REFERENCES")
+print("=" * 90)
 
-missing_refs = []
+loaded_references = set(reference_to_docid.keys())
 
-print("=" * 80)
-print("RDF MAPPING DEBUG")
-print("=" * 80)
+checked = 0
 
 for parent_doc_id, links in all_links.items():
 
@@ -19,33 +18,40 @@ for parent_doc_id, links in all_links.items():
 
         if child_doc_id is None:
 
-            missing += 1
+            print(f"\nParent Doc ID : {parent_doc_id}")
+            print(f"Relation      : {relation}")
+            print(f"Reference     : {reference}")
 
-            if len(missing_refs) < 100:
-                missing_refs.append(
-                    (
-                        parent_doc_id,
-                        relation,
-                        reference
-                    )
-                )
+            if reference in loaded_references:
+                print("Status        : FOUND")
+            else:
+                print("Status        : NOT FOUND")
 
-        else:
+                # Try to find similar references
+                similar = []
 
-            matched += 1
+                for ref in loaded_references:
 
+                    if reference.split(".")[0] == ref.split(".")[0]:
+                        similar.append(ref)
 
-print(f"Total Extracted Links     : {matched + missing}")
-print(f"Matched References        : {matched}")
-print(f"Missing References        : {missing}")
+                    if len(similar) >= 5:
+                        break
 
-print("=" * 80)
-print("FIRST 100 UNMATCHED REFERENCES")
-print("=" * 80)
+                if similar:
+                    print("\nClosest Loaded References:")
 
-for parent, relation, ref in missing_refs:
+                    for s in similar:
+                        print("   ", s)
 
-    print(f"Parent Doc : {parent}")
-    print(f"Relation   : {relation}")
-    print(f"Reference  : {ref}")
-    print("-" * 80)
+            print("-" * 90)
+
+            checked += 1
+
+            if checked >= 20:
+                break
+
+    if checked >= 20:
+        break
+
+print("\nFinished Checking.")
