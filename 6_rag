@@ -1,31 +1,51 @@
 # ==========================================
-# Relation Type Summary
+# Cell 7A : RDF Mapping Debug
 # ==========================================
 
-doc_count = 0
-wiki_count = 0
-temp_count = 0
+matched = 0
+missing = 0
 
-for links in all_links.values():
-
-    for relation, ref in links:
-
-        if relation == "doc":
-            doc_count += 1
-
-        elif relation == "doc:wiki":
-            wiki_count += 1
-
-        elif relation == "doc:Temp_Import":
-            temp_count += 1
-
-print("\n")
-print("=" * 80)
-print("RELATION TYPE SUMMARY")
-print("=" * 80)
-
-print(f"doc               : {doc_count}")
-print(f"doc:wiki          : {wiki_count}")
-print(f"doc:Temp_Import   : {temp_count}")
+missing_refs = []
 
 print("=" * 80)
+print("RDF MAPPING DEBUG")
+print("=" * 80)
+
+for parent_doc_id, links in all_links.items():
+
+    for relation, reference in links:
+
+        child_doc_id = reference_to_docid.get(reference)
+
+        if child_doc_id is None:
+
+            missing += 1
+
+            if len(missing_refs) < 100:
+                missing_refs.append(
+                    (
+                        parent_doc_id,
+                        relation,
+                        reference
+                    )
+                )
+
+        else:
+
+            matched += 1
+
+
+print(f"Total Extracted Links     : {matched + missing}")
+print(f"Matched References        : {matched}")
+print(f"Missing References        : {missing}")
+
+print("=" * 80)
+print("FIRST 100 UNMATCHED REFERENCES")
+print("=" * 80)
+
+for parent, relation, ref in missing_refs:
+
+    print(f"Parent Doc : {parent}")
+    print(f"Relation   : {relation}")
+    print(f"Reference  : {ref}")
+    print("-" * 80)
