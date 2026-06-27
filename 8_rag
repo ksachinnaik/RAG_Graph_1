@@ -427,154 +427,173 @@ def traverse_graph(
 
 
 
-
 # ==========================================================
-# Cell 11C : Knowledge Graph Context Builder
+# Cell 11C : Build Knowledge Graph Package
 # ==========================================================
 
-def build_graph_context(
+def build_graph_package(
 
-    graph,
-
-    retrieved_nodes,
-
-    max_documents=10,
-
-    max_chars=1200
-
+        query,
+        graph,
+        retrieved_nodes
 ):
 
     print("=" * 80)
-    print("KNOWLEDGE GRAPH CONTEXT")
+    print("BUILDING KNOWLEDGE GRAPH PACKAGE")
     print("=" * 80)
 
-    context_documents = []
-
-    visited = set()
-
     # ------------------------------------------------------
-    # Sort by Retrieval Score
+    # Documents
     # ------------------------------------------------------
 
-    retrieved_nodes = sorted(
+    documents = []
 
-        retrieved_nodes,
-
-        key=lambda x: x["score"],
-
-        reverse=True
-
-    )
-
-    # ------------------------------------------------------
-    # Build Context
-    # ------------------------------------------------------
+    document_ids = set()
 
     for item in retrieved_nodes:
 
         node_id = item["doc_id"]
 
-        if node_id in visited:
+        if node_id in document_ids:
             continue
 
-        visited.add(node_id)
+        document_ids.add(node_id)
 
         node = graph.nodes[node_id]
 
-        content = node.get("content", "")
+        documents.append({
 
-        if len(content) > max_chars:
-            content = content[:max_chars] + "..."
+            "doc_id": node_id,
 
-        context_documents.append(
+            "title": node.get("title",""),
 
-            {
+            "reference": node.get("reference",""),
 
-                "doc_id": node_id,
+            "content": node.get("content",""),
 
-                "title": node.get("title", ""),
+            "pagerank": item["pagerank"],
 
-                "reference": node.get("reference", ""),
+            "degree": item["degree"],
 
-                "hop": item["hop"],
+            "hop": item["hop"],
 
-                "parent": item["parent"],
+            "parent": item["parent"],
 
-                "relation": item["relation"],
+            "relation": item["relation"],
 
-                "pagerank": item["pagerank"],
+            "score": item["score"]
 
-                "degree": item["degree"],
+        })
 
-                "score": item["score"],
+    # ------------------------------------------------------
+    # Graph Relationships
+    # ------------------------------------------------------
 
-                "content": content
+    relationships = []
 
-            }
+    for u,v,data in graph.edges(data=True):
+
+        if u in document_ids and v in document_ids:
+
+            relationships.append({
+
+                "source":u,
+
+                "target":v,
+
+                "relation":data["relation"]
+
+            })
+
+    # ------------------------------------------------------
+    # Graph Package
+    # ------------------------------------------------------
+
+    graph_package = {
+
+        "query":query,
+
+        "documents":documents,
+
+        "relationships":relationships,
+
+        "statistics":{
+
+            "documents":len(documents),
+
+            "relationships":len(relationships)
+
+        }
+
+    }
+
+    # ------------------------------------------------------
+    # Summary
+    # ------------------------------------------------------
+
+    print()
+
+    print("="*80)
+
+    print("GRAPH PACKAGE SUMMARY")
+
+    print("="*80)
+
+    print(f"Query               : {query}")
+
+    print(f"Retrieved Documents : {len(documents)}")
+
+    print(f"Relationships       : {len(relationships)}")
+
+    print()
+
+    print("="*80)
+
+    print("DOCUMENTS")
+
+    print("="*80)
+
+    for doc in documents:
+
+        print(
+
+            f'Doc:{doc["doc_id"]:4} '
+
+            f'Hop:{doc["hop"]} '
+
+            f'Score:{doc["score"]:7.2f} '
+
+            f'{doc["title"]}'
 
         )
 
-        if len(context_documents) >= max_documents:
-            break
+    print()
 
-    # ------------------------------------------------------
-    # Print Summary
-    # ------------------------------------------------------
+    print("="*80)
 
-    print(f"Documents Selected : {len(context_documents)}")
+    print("RELATIONSHIPS")
 
-    print("\n")
+    print("="*80)
 
-    print("=" * 80)
+    for rel in relationships:
 
-    print("DOCUMENT SUMMARY")
+        print(
 
-    print("=" * 80)
+            f'{rel["source"]} '
 
-    for doc in context_documents:
+            f'---{rel["relation"]}---> '
 
-        print(f"Doc ID      : {doc['doc_id']}")
-        print(f"Title       : {doc['title']}")
-        print(f"Hop         : {doc['hop']}")
-        print(f"Relation    : {doc['relation']}")
-        print(f"Parent      : {doc['parent']}")
-        print(f"PageRank    : {doc['pagerank']:.6f}")
-        print(f"Degree      : {doc['degree']}")
-        print(f"Score       : {doc['score']:.2f}")
-        print("-" * 80)
+            f'{rel["target"]}'
 
-    # ------------------------------------------------------
-    # Build Final Context String
-    # ------------------------------------------------------
+        )
 
-    context = ""
+    print()
 
-    for doc in context_documents:
+    print("="*80)
 
-        context += f"""
-====================================================
-Document ID : {doc['doc_id']}
-Title       : {doc['title']}
-Reference   : {doc['reference']}
-Hop         : {doc['hop']}
-Relation    : {doc['relation']}
-Parent      : {doc['parent']}
-PageRank    : {doc['pagerank']:.6f}
-Degree      : {doc['degree']}
+    print("GRAPH PACKAGE READY")
 
-Content:
-{doc['content']}
+    print("="*80)
 
-"""
-
-    print("\n")
-
-    print("=" * 80)
-
-    print("GRAPH CONTEXT READY")
-
-    print("=" * 80)
-
-    print(f"Total Context Size : {len(context):,} characters")
-
+    return graph_package
     return context
