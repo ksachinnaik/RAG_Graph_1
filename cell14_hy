@@ -1,0 +1,67 @@
+# ==========================================================
+# Cell 14 : Hybrid Retrieval
+# ==========================================================
+
+# ----------------------------------------------------------
+# Initialize Hybrid GraphRAG
+# ----------------------------------------------------------
+
+hybrid_rag = HybridGraphRAG(
+
+    graph=graph,
+
+    graph_index=graph_index,
+
+    vector_index=index
+
+)
+
+# ----------------------------------------------------------
+# User Query
+# ----------------------------------------------------------
+
+query = input("Enter your question : ")
+
+print()
+
+# ----------------------------------------------------------
+# Hybrid Retrieval
+# ----------------------------------------------------------
+
+retrieval_result = hybrid_rag.retrieve(
+
+    query=query,
+
+    top_k_graph=10,
+
+    top_k_vector=10,
+
+    max_hops=2,
+
+    max_nodes=50
+
+)
+
+print()
+
+print("=" * 80)
+print("HYBRID RETRIEVAL FINISHED")
+print("=" * 80)
+
+print(f"Query              : {retrieval_result['query']}")
+
+print(f"Semantic Documents : {len(retrieval_result['semantic_documents'])}")
+
+print(f"Graph Documents    : {len(retrieval_result['graph_documents'])}")
+
+print(f"Hybrid Documents   : {len(retrieval_result['hybrid_documents'])}")
+
+print(f"Subgraph Nodes     : {retrieval_result['retrieved_subgraph'].number_of_nodes()}")
+
+print(f"Subgraph Edges     : {retrieval_result['retrieved_subgraph'].number_of_edges()}")
+
+print()
+
+print("=" * 80)
+print("READY FOR LLM")
+print("=" * 80)
