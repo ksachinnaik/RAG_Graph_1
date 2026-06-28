@@ -3,25 +3,62 @@
 # ==========================================================
 
 # ----------------------------------------------------------
-# Create LLM Context
+# Graph Context
 # ----------------------------------------------------------
 
-context = retrieval_result["graph_package"]
+graph_context = retrieval_result["graph_package"]
 
 # ----------------------------------------------------------
-# Generate Final Answer
+# Build Prompt
 # ----------------------------------------------------------
 
-answer = generate_answer(
+prompt = f"""
+You are an expert Rolls-Royce Knowledge Assistant.
 
-    query=retrieval_result["query"],
+Your job is to answer the user's question ONLY using the
+retrieved Hybrid GraphRAG context.
 
-    graph_package=context
+The context comes from:
 
-)
+1. Semantic Retrieval (Vector Search)
+2. Knowledge Graph Retrieval
+
+Instructions:
+
+- Answer ONLY from the provided context.
+- Combine information from multiple documents when needed.
+- Do not hallucinate.
+- If the answer cannot be found in the context,
+  reply with:
+  "The retrieved documents do not contain sufficient information."
+
+------------------------------------------------------------
+QUESTION
+------------------------------------------------------------
+
+{retrieval_result["query"]}
+
+------------------------------------------------------------
+KNOWLEDGE GRAPH CONTEXT
+------------------------------------------------------------
+
+{graph_context}
+
+------------------------------------------------------------
+ANSWER
+------------------------------------------------------------
+"""
 
 # ----------------------------------------------------------
-# Store Answer
+# Call LLM
+# ----------------------------------------------------------
+
+response = llm.invoke(prompt)
+
+answer = response.content
+
+# ----------------------------------------------------------
+# Save Answer
 # ----------------------------------------------------------
 
 retrieval_result["answer"] = answer
@@ -36,9 +73,7 @@ print("RETRIEVED KNOWLEDGE SUBGRAPH")
 print("=" * 90)
 
 visualize_graph(
-
     retrieval_result["retrieved_subgraph"]
-
 )
 
 # ----------------------------------------------------------
@@ -46,7 +81,6 @@ visualize_graph(
 # ----------------------------------------------------------
 
 print()
-
 print("=" * 90)
 print("QUESTION")
 print("=" * 90)
@@ -54,11 +88,10 @@ print("=" * 90)
 print(retrieval_result["query"])
 
 # ----------------------------------------------------------
-# Display Final Answer
+# Display Answer
 # ----------------------------------------------------------
 
 print()
-
 print("=" * 90)
 print("FINAL ANSWER")
 print("=" * 90)
