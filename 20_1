@@ -198,8 +198,6 @@ display(matched_xml)
 
 
 #################################  5  ##########################
-
-
 # ==========================================================
 # Cell 5 : XML Data Cleaning
 # ==========================================================
@@ -219,59 +217,44 @@ xml_df = matched_xml
 print(f"Matched XML Documents : {xml_df.count()}")
 
 # ----------------------------------------------------------
-# Remove Duplicate Documents
+# Remove Duplicate XML Documents
 # ----------------------------------------------------------
 
 xml_df = (
 
     xml_df
 
-    .dropDuplicates(["doc_id"])
+    .dropDuplicates(
 
-)
-
-# ----------------------------------------------------------
-# Remove Null Content
-# ----------------------------------------------------------
-
-xml_df = (
-
-    xml_df
-
-    .filter(
-
-        F.col("content").isNotNull()
+        ["doc_id"]
 
     )
 
 )
 
 # ----------------------------------------------------------
-# Remove Empty Content
+# Replace NULL Content
+# (Do NOT remove XML documents)
 # ----------------------------------------------------------
 
 xml_df = (
 
     xml_df
 
-    .filter(
+    .fillna(
 
-        F.length(
+        {
 
-            F.trim(
+            "content": ""
 
-                F.col("content")
-
-            )
-
-        ) > 0
+        }
 
     )
 
 )
 
 # ----------------------------------------------------------
-# Clean Whitespace
+# Clean XML Content
 # ----------------------------------------------------------
 
 xml_df = (
@@ -284,7 +267,7 @@ xml_df = (
 
         F.regexp_replace(
 
-            "content",
+            F.col("content"),
 
             r"\s+",
 
@@ -297,7 +280,7 @@ xml_df = (
 )
 
 # ----------------------------------------------------------
-# Trim Columns
+# Trim Text Columns
 # ----------------------------------------------------------
 
 xml_df = (
@@ -323,6 +306,18 @@ xml_df = (
         F.trim(
 
             F.col("reference")
+
+        )
+
+    )
+
+    .withColumn(
+
+        "source",
+
+        F.trim(
+
+            F.col("source")
 
         )
 
