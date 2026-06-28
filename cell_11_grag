@@ -1,0 +1,173 @@
+# ==========================================================
+# Cell 11A : Query Processing & Candidate Retrieval
+# ==========================================================
+
+import re
+
+# ----------------------------------------------------------
+# Query Cleaning
+# ----------------------------------------------------------
+
+STOP_WORDS = {
+    "what", "is", "are", "the", "a", "an", "of", "for",
+    "to", "in", "on", "about", "how", "does", "do",
+    "tell", "me", "explain", "describe", "show"
+}
+
+
+def normalize_query(query):
+
+    query = str(query).lower()
+
+    words = re.findall(r"[a-zA-Z0-9_]+", query)
+
+    words = [
+        w
+        for w in words
+        if w not in STOP_WORDS
+    ]
+
+    return words
+
+
+# ----------------------------------------------------------
+# Initial Candidate Retrieval
+# ----------------------------------------------------------
+
+def retrieve_candidates(
+    graph_index,
+    query,
+    top_k=20
+):
+
+    query_words = normalize_query(query)
+
+    # ----------------------------------------------
+    # Empty Query
+    # ----------------------------------------------
+
+    if len(query_words) == 0:
+
+        print("=" * 80)
+        print("EMPTY QUERY")
+        print("=" * 80)
+
+        return []
+
+    query_set = set(query_words)
+
+    print("=" * 80)
+    print("QUERY")
+    print("=" * 80)
+
+    print(query)
+
+    print("\nNormalized Query")
+    print(query_words)
+
+    candidates = []
+
+    # ----------------------------------------------
+    # Search Graph Index
+    # ----------------------------------------------
+
+    for _, row in graph_index.iterrows():
+
+        searchable = str(row["search_text"]).lower()
+
+        searchable_words = set(
+            re.findall(
+                r"[a-zA-Z0-9_]+",
+                searchable
+            )
+        )
+
+        overlap = len(
+            searchable_words &
+            query_set
+        )
+
+        if overlap == 0:
+            continue
+
+        # ------------------------------------------
+        # Multi-factor Score
+        # ------------------------------------------
+
+        score = (
+
+            overlap * 10 +
+
+            row["pagerank"] * 100 +
+
+            row["degree"] * 2
+
+        )
+
+        title = str(row["title"]).lower()
+
+        for word in query_words:
+
+            if word in title:
+                score += 20
+
+        reference = str(row["reference"]).lower()
+
+        for word in query_words:
+
+            if word in reference:
+                score += 15
+
+        candidates.append({
+
+            "doc_id": row["doc_id"],
+
+            "title": row["title"],
+
+            "reference": row["reference"],
+
+            "pagerank": row["pagerank"],
+
+            "degree": row["degree"],
+
+            "score": score
+
+        })
+
+    # ----------------------------------------------
+    # Ranking
+    # ----------------------------------------------
+
+    candidates = sorted(
+
+        candidates,
+
+        key=lambda x: x["score"],
+
+        reverse=True
+
+    )
+
+    print("\n")
+
+    print("=" * 80)
+    print("TOP CANDIDATES")
+    print("=" * 80)
+
+    for candidate in candidates[:top_k]:
+
+        print(
+
+            f'Doc:{candidate["doc_id"]:4}'
+
+            f'  Score:{candidate["score"]:8.2f}'
+
+            f'  PR:{candidate["pagerank"]:.6f}'
+
+            f'  Deg:{candidate["degree"]:3}'
+
+            f'  {candidate["title"]}'
+
+        )
+
+    return candidates[:top_k]
