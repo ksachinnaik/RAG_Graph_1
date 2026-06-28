@@ -198,4 +198,67 @@ class GraphRAG:
 
         return retrieval_result
 
-       
+
+
+# ==================================================
+# Step 4
+# Build Connected Retrieved Subgraph
+# ==================================================
+
+retrieved_subgraph = nx.DiGraph()
+
+# --------------------------------------------------
+# Add Nodes
+# --------------------------------------------------
+
+for node in retrieved_nodes:
+
+    node_id = node["doc_id"]
+
+    retrieved_subgraph.add_node(
+
+        node_id,
+
+        **self.graph.nodes[node_id]
+
+    )
+
+# --------------------------------------------------
+# Add Traversal Edges
+# --------------------------------------------------
+
+for node in retrieved_nodes:
+
+    parent = node["parent"]
+
+    current = node["doc_id"]
+
+    relation = node["relation"]
+
+    if parent is None:
+
+        continue
+
+    retrieved_subgraph.add_edge(
+
+        parent,
+
+        current,
+
+        relation=relation
+
+    )
+
+print()
+
+print("=" * 80)
+
+print("CONNECTED RETRIEVED SUBGRAPH")
+
+print("=" * 80)
+
+print(f"Nodes : {retrieved_subgraph.number_of_nodes()}")
+
+print(f"Edges : {retrieved_subgraph.number_of_edges()}")
+
+print()
