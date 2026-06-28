@@ -1,0 +1,152 @@
+# ==========================================================
+# Cell 12 : GraphRAG Pipeline
+# Part 1 : GraphRAG Class Initialization
+# ==========================================================
+
+import networkx as nx
+
+
+class GraphRAG:
+
+    # ------------------------------------------------------
+    # Constructor
+    # ------------------------------------------------------
+
+    def __init__(
+        self,
+        graph,
+        graph_index
+    ):
+
+        self.graph = graph
+
+        self.graph_index = graph_index
+
+    # ------------------------------------------------------
+    # Retrieve Knowledge
+    # ------------------------------------------------------
+
+    def retrieve(
+
+        self,
+
+        query,
+
+        top_k=10,
+
+        max_hops=2,
+
+        max_nodes=50
+
+    ):
+
+        print("=" * 80)
+        print("GRAPHRAG RETRIEVAL PIPELINE")
+        print("=" * 80)
+
+        print(f"Query : {query}")
+
+        print()
+
+        # ==================================================
+        # Step 1
+        # Candidate Retrieval
+        # (Cell 11A)
+        # ==================================================
+
+          candidates = retrieve_candidates(
+
+            graph_index=self.graph_index,
+
+            query=query,
+
+            top_k=top_k
+
+        )
+
+        # --------------------------------------------------
+        # No Candidate Found
+        # --------------------------------------------------
+
+        if len(candidates) == 0:
+
+            print("No candidate documents found.")
+
+            return {
+
+                "query": query,
+
+                "candidates": [],
+
+                "retrieved_nodes": [],
+
+                "retrieved_subgraph": nx.DiGraph(),
+
+                "graph_package": None
+
+            }
+
+        # ==================================================
+        # Step 2
+        # Knowledge Graph Traversal
+        # (Cell 11B)
+        # ==================================================
+
+        retrieved_nodes = traverse_graph(
+
+            graph=self.graph,
+
+            candidates=candidates,
+
+            max_hops=max_hops,
+
+            max_nodes=max_nodes
+
+        )
+
+        # ==================================================
+        # Step 3
+        # Build Knowledge Graph Package
+        # (Cell 11C)
+        # ==================================================
+
+        graph_package = build_graph_package(
+
+            query=query,
+
+            graph=self.graph,
+
+            retrieved_nodes=retrieved_nodes
+
+        )
+
+        # ==================================================
+        # Step 4
+        # Create Retrieved Subgraph
+        # ==================================================
+
+        retrieved_doc_ids = [
+
+            node["doc_id"]
+
+            for node in retrieved_nodes
+
+        ]
+
+        retrieved_subgraph = self.graph.subgraph(
+
+            retrieved_doc_ids
+
+        ).copy()
+
+        print()
+
+        print("=" * 80)
+        print("RETRIEVED SUBGRAPH")
+        print("=" * 80)
+
+        print(f"Nodes : {retrieved_subgraph.number_of_nodes()}")
+
+        print(f"Edges : {retrieved_subgraph.number_of_edges()}")
+
+        print()
