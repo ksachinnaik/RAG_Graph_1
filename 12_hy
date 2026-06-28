@@ -1,0 +1,382 @@
+# ==========================================================
+# Cell 12 : Hybrid GraphRAG Pipeline
+# Part 1 : HybridGraphRAG Class Initialization
+# ==========================================================
+
+import networkx as nx
+
+
+class HybridGraphRAG:
+
+    # ------------------------------------------------------
+    # Constructor
+    # ------------------------------------------------------
+
+    def __init__(
+
+        self,
+
+        graph,
+
+        graph_index,
+
+        vector_index
+
+    ):
+
+        self.graph = graph
+
+        self.graph_index = graph_index
+
+        self.vector_index = vector_index
+
+    # ------------------------------------------------------
+    # Hybrid Retrieval
+    # ------------------------------------------------------
+
+    def retrieve(
+
+        self,
+
+        query,
+
+        top_k_graph=10,
+
+        top_k_vector=10,
+
+        max_hops=2,
+
+        max_nodes=50
+
+    ):
+
+        print("=" * 80)
+        print("HYBRID GRAPHRAG RETRIEVAL PIPELINE")
+        print("=" * 80)
+
+        print(f"Query : {query}")
+
+        print()
+
+                # ==================================================
+        # Step 1
+        # Semantic Retrieval
+        # (Cell 10C)
+        # ==================================================
+
+        semantic_documents = semantic_retrieve(
+
+            query=query,
+
+            index=self.vector_index,
+
+            top_k=top_k_vector
+
+        )
+
+        # --------------------------------------------------
+        # Semantic Retrieval Summary
+        # --------------------------------------------------
+
+        print()
+
+        print("=" * 80)
+        print("SEMANTIC RETRIEVAL SUMMARY")
+        print("=" * 80)
+
+        print(f"Semantic Documents : {len(semantic_documents)}")
+
+        print()
+
+        # ==================================================
+        # Step 2
+        # Graph Candidate Retrieval
+        # (Cell 11A)
+        # ==================================================
+
+        candidates = retrieve_candidates(
+
+            graph_index=self.graph_index,
+
+            query=query,
+
+            top_k=top_k_graph
+
+        )
+
+        # --------------------------------------------------
+        # No Graph Candidates
+        # --------------------------------------------------
+
+        if len(candidates) == 0:
+
+            print("No graph candidate documents found.")
+
+            return {
+
+                "query": query,
+
+                "semantic_documents": semantic_documents,
+
+                "graph_documents": [],
+
+                "hybrid_documents": [],
+
+                "retrieved_subgraph": nx.DiGraph(),
+
+                "graph_package": None
+
+            }
+
+        # ==================================================
+        # Step 3
+        # Graph Traversal
+        # (Cell 11B)
+        # ==================================================
+
+        retrieved_nodes = traverse_graph(
+
+            graph=self.graph,
+
+            candidates=candidates,
+
+            max_hops=max_hops,
+
+            max_nodes=max_nodes
+
+        )
+
+        # ==================================================
+        # Step 4
+        # Build Graph Package
+        # (Cell 11C)
+        # ==================================================
+
+        graph_package = build_graph_package(
+
+            query=query,
+
+            graph=self.graph,
+
+            retrieved_nodes=retrieved_nodes
+
+        )
+
+        print()
+
+        print("=" * 80)
+        print("GRAPH RETRIEVAL COMPLETED")
+        print("=" * 80)
+
+        print(f"Graph Documents : {len(retrieved_nodes)}")
+
+        print()
+
+                # ==================================================
+        # Step 5
+        # Merge Semantic & Graph Retrieval
+        # ==================================================
+
+        hybrid_documents = []
+
+        visited_documents = set()
+
+        # --------------------------------------------------
+        # Add Semantic Documents
+        # --------------------------------------------------
+
+        for doc in semantic_documents:
+
+            key = doc.get("doc_uri", "")
+
+            if key in visited_documents:
+                continue
+
+            visited_documents.add(key)
+
+            hybrid_documents.append(
+
+                {
+
+                    "retrieval_type": "Semantic",
+
+                    **doc
+
+                }
+
+            )
+
+        # --------------------------------------------------
+        # Add Graph Documents
+        # --------------------------------------------------
+
+        for node in retrieved_nodes:
+
+            key = str(node["doc_id"])
+
+            if key in visited_documents:
+                continue
+
+            visited_documents.add(key)
+
+            hybrid_documents.append(
+
+                {
+
+                    "retrieval_type": "Graph",
+
+                    **node
+
+                }
+
+            )
+
+        # --------------------------------------------------
+        # Hybrid Retrieval Summary
+        # --------------------------------------------------
+
+        print()
+
+        print("=" * 80)
+        print("HYBRID RETRIEVAL")
+        print("=" * 80)
+
+        print(f"Semantic Documents : {len(semantic_documents)}")
+
+        print(f"Graph Documents    : {len(retrieved_nodes)}")
+
+        print(f"Hybrid Documents   : {len(hybrid_documents)}")
+
+        print()
+
+        print("=" * 80)
+        print("HYBRID DOCUMENTS")
+        print("=" * 80)
+
+        for index, doc in enumerate(
+
+            hybrid_documents,
+
+            start=1
+
+        ):
+
+            print(
+
+                f'{index:2}. '
+
+                f'{doc["retrieval_type"]:<10}'
+
+            )
+
+            if doc["retrieval_type"] == "Semantic":
+
+                print(
+
+                    f'    Source : {doc.get("source","")}'
+
+                )
+
+            else:
+
+                print(
+
+                    f'    Doc ID : {doc["doc_id"]}'
+
+                )
+
+                print(
+
+                    f'    Title  : {doc["title"]}'
+
+                )
+
+            print("-" * 80)
+
+        print()
+
+                # ==================================================
+        # Step 6
+        # Create Retrieved Subgraph
+        # ==================================================
+
+        retrieved_doc_ids = [
+
+            node["doc_id"]
+
+            for node in retrieved_nodes
+
+        ]
+
+        retrieved_subgraph = self.graph.subgraph(
+
+            retrieved_doc_ids
+
+        ).copy()
+
+        print()
+
+        print("=" * 80)
+        print("RETRIEVED SUBGRAPH")
+        print("=" * 80)
+
+        print(f"Nodes : {retrieved_subgraph.number_of_nodes()}")
+
+        print(f"Edges : {retrieved_subgraph.number_of_edges()}")
+
+        print()
+
+        # ==================================================
+        # Step 7
+        # Hybrid Retrieval Summary
+        # ==================================================
+
+        print("=" * 80)
+        print("HYBRID RETRIEVAL SUMMARY")
+        print("=" * 80)
+
+        print(f"Semantic Documents : {len(semantic_documents)}")
+
+        print(f"Graph Documents    : {len(retrieved_nodes)}")
+
+        print(f"Hybrid Documents   : {len(hybrid_documents)}")
+
+        print(f"Subgraph Nodes     : {retrieved_subgraph.number_of_nodes()}")
+
+        print(f"Subgraph Edges     : {retrieved_subgraph.number_of_edges()}")
+
+        print()
+
+        # ==================================================
+        # Step 8
+        # Prepare Hybrid Retrieval Package
+        # ==================================================
+
+        retrieval_result = {
+
+            "query": query,
+
+            "semantic_documents": semantic_documents,
+
+            "graph_documents": retrieved_nodes,
+
+            "hybrid_documents": hybrid_documents,
+
+            "retrieved_subgraph": retrieved_subgraph,
+
+            "graph_package": graph_package
+
+        }
+
+        print("=" * 80)
+        print("HYBRID GRAPHRAG RETRIEVAL COMPLETED")
+        print("=" * 80)
+
+        print()
+
+        # ==================================================
+        # Step 9
+        # Return Hybrid Retrieval Package
+        # ==================================================
+
+        return retrieval_result
