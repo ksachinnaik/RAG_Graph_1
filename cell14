@@ -1,1 +1,119 @@
+# ==========================================================
+# Cell 14 : GraphRAG Retrieval
+# ==========================================================
 
+# ----------------------------------------------------------
+# User Query
+# ----------------------------------------------------------
+
+query = """
+What phenomenon can occur when two vibrating structures come
+into contact at matching wave velocities, and what design
+features can reduce this risk on engine casings?
+"""
+
+# ----------------------------------------------------------
+# Initialize GraphRAG
+# ----------------------------------------------------------
+
+rag = GraphRAG(
+
+    graph=G,
+
+    graph_index=graph_index
+
+)
+
+# ----------------------------------------------------------
+# Run Retrieval Pipeline
+# ----------------------------------------------------------
+
+result = rag.retrieve(
+
+    query=query,
+
+    top_k=10,
+
+    max_hops=2,
+
+    max_nodes=50
+
+)
+
+# ----------------------------------------------------------
+# Retrieval Summary
+# ----------------------------------------------------------
+
+print("\n")
+
+print("=" * 90)
+print("GRAPH RAG RETRIEVAL")
+print("=" * 90)
+
+print(f"\nUser Query :\n{result['query']}")
+
+# ----------------------------------------------------------
+# Retrieved Documents
+# ----------------------------------------------------------
+
+print("\n")
+
+print("=" * 90)
+print("RETRIEVED DOCUMENTS")
+print("=" * 90)
+
+for node in result["retrieved_nodes"]:
+
+    print(f"\nDocument ID : {node['doc_id']}")
+
+    print(f"Title       : {node['title']}")
+
+    print(f"Reference   : {node['reference']}")
+
+    print(f"PageRank    : {node['pagerank']:.6f}")
+
+    print(f"Degree      : {node['degree']}")
+
+    print(f"Hop         : {node['hop']}")
+
+    print(f"Score       : {node['score']:.2f}")
+
+# ----------------------------------------------------------
+# Retrieved Relationships
+# ----------------------------------------------------------
+
+print("\n")
+
+print("=" * 90)
+print("RETRIEVED RELATIONSHIPS")
+print("=" * 90)
+
+retrieved_graph = result["retrieved_subgraph"]
+
+for source, target, data in retrieved_graph.edges(data=True):
+
+    relation = data.get("relation", "related_to")
+
+    print(
+
+        f"{source} ({G.nodes[source]['title']}) "
+
+        f"---{relation}---> "
+
+        f"{target} ({G.nodes[target]['title']})"
+
+    )
+
+# ----------------------------------------------------------
+# Retrieval Statistics
+# ----------------------------------------------------------
+
+print("\n")
+
+print("=" * 90)
+
+print(f"Retrieved Nodes : {retrieved_graph.number_of_nodes()}")
+
+print(f"Retrieved Edges : {retrieved_graph.number_of_edges()}")
+
+print("=" * 90)
