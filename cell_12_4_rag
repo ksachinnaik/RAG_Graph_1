@@ -150,8 +150,52 @@ class GraphRAG:
 
         print()
         # ==================================================
+        # Step 5
+        # Retrieval Summary
+        # ==================================================
+
+        print("=" * 80)
+        print("RETRIEVAL SUMMARY")
+        print("=" * 80)
+
+        print(f"Candidate Documents : {len(candidates)}")
+
+        print(f"Retrieved Nodes     : {len(retrieved_nodes)}")
+
+        print(f"Subgraph Nodes      : {retrieved_subgraph.number_of_nodes()}")
+
+        print(f"Subgraph Edges      : {retrieved_subgraph.number_of_edges()}")
+
+        print()
+
+        # ==================================================
+        # Prepare Retrieval Result
+        # ==================================================
+
+        retrieval_result = {
+
+            "query": query,
+
+            "candidates": candidates,
+
+            "retrieved_nodes": retrieved_nodes,
+
+            "retrieved_subgraph": retrieved_subgraph,
+
+            "graph_package": graph_package
+
+        }
+
+        print("=" * 80)
+        print("GRAPHRAG RETRIEVAL COMPLETED")
+        print("=" * 80)
+
+        print()
+        # ==================================================
         # Step 6
         # Return Retrieval Package
         # ==================================================
 
         return retrieval_result
+
+       
