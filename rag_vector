@@ -39,3 +39,118 @@ print()
 print("=" * 80)
 print("CELL 10A COMPLETED")
 print("=" * 80)
+
+
+# ==========================================================
+# Cell 10C : Semantic Retrieval
+# ==========================================================
+
+def semantic_retrieve(
+
+        query,
+        index,
+        top_k=10
+
+):
+
+    print("=" * 80)
+    print("SEMANTIC RETRIEVAL")
+    print("=" * 80)
+
+    print(f"Query : {query}")
+
+    print()
+
+    # ------------------------------------------------------
+    # Databricks Hybrid Search
+    # ------------------------------------------------------
+
+    results = index.similarity_search(
+
+        query_text=query,
+
+        columns=[
+
+            TEXT_COLUMN,
+
+            DOC_URI_COLUMN,
+
+            "source"
+
+        ],
+
+        num_results=top_k,
+
+        query_type="hybrid",
+
+        reranker=DatabricksReranker(
+
+            columns_to_rerank=[TEXT_COLUMN]
+
+        )
+
+    )
+
+    # ------------------------------------------------------
+    # Convert Results
+    # ------------------------------------------------------
+
+    semantic_documents = []
+
+    for rank, row in enumerate(
+
+        results.get("result", {}).get("data_array", []),
+
+        start=1
+
+    ):
+
+        semantic_documents.append(
+
+            {
+
+                "rank": rank,
+
+                "content": row[0],
+
+                "doc_uri": str(row[1]) if row[1] else "",
+
+                "source": str(row[2]) if row[2] else ""
+
+            }
+
+        )
+
+    # ------------------------------------------------------
+    # Display
+    # ------------------------------------------------------
+
+    print("=" * 80)
+    print("TOP SEMANTIC DOCUMENTS")
+    print("=" * 80)
+
+    for doc in semantic_documents:
+
+        print(
+
+            f'Rank:{doc["rank"]:2} '
+
+            f'Doc:{doc["doc_uri"]}'
+
+        )
+
+        print(f'Source : {doc["source"]}')
+
+        print("-" * 80)
+
+    print()
+
+    print("=" * 80)
+    print("SEMANTIC RETRIEVAL COMPLETED")
+    print("=" * 80)
+
+    print(f"Retrieved Documents : {len(semantic_documents)}")
+
+    print()
+
+    return semantic_documents
