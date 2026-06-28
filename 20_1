@@ -195,3 +195,153 @@ print(f"Matched XML Documents : {matched_xml.count()}")
 print()
 
 display(matched_xml)
+
+
+#################################  5  ##########################
+
+
+# ==========================================================
+# Cell 5 : XML Data Cleaning
+# ==========================================================
+
+from pyspark.sql import functions as F
+
+print("=" * 80)
+print("XML DATA CLEANING")
+print("=" * 80)
+
+# ----------------------------------------------------------
+# Input from Cell 4
+# ----------------------------------------------------------
+
+xml_df = matched_xml
+
+print(f"Matched XML Documents : {xml_df.count()}")
+
+# ----------------------------------------------------------
+# Remove Duplicate Documents
+# ----------------------------------------------------------
+
+xml_df = (
+
+    xml_df
+
+    .dropDuplicates(["doc_id"])
+
+)
+
+# ----------------------------------------------------------
+# Remove Null Content
+# ----------------------------------------------------------
+
+xml_df = (
+
+    xml_df
+
+    .filter(
+
+        F.col("content").isNotNull()
+
+    )
+
+)
+
+# ----------------------------------------------------------
+# Remove Empty Content
+# ----------------------------------------------------------
+
+xml_df = (
+
+    xml_df
+
+    .filter(
+
+        F.length(
+
+            F.trim(
+
+                F.col("content")
+
+            )
+
+        ) > 0
+
+    )
+
+)
+
+# ----------------------------------------------------------
+# Clean Whitespace
+# ----------------------------------------------------------
+
+xml_df = (
+
+    xml_df
+
+    .withColumn(
+
+        "content",
+
+        F.regexp_replace(
+
+            "content",
+
+            r"\s+",
+
+            " "
+
+        )
+
+    )
+
+)
+
+# ----------------------------------------------------------
+# Trim Columns
+# ----------------------------------------------------------
+
+xml_df = (
+
+    xml_df
+
+    .withColumn(
+
+        "title",
+
+        F.trim(
+
+            F.col("title")
+
+        )
+
+    )
+
+    .withColumn(
+
+        "reference",
+
+        F.trim(
+
+            F.col("reference")
+
+        )
+
+    )
+
+)
+
+# ----------------------------------------------------------
+# Summary
+# ----------------------------------------------------------
+
+print()
+
+print("=" * 80)
+print("CLEAN XML DATA")
+print("=" * 80)
+
+print(f"XML Documents Ready : {xml_df.count()}")
+
+print()
+
+display(xml_df)
