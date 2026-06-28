@@ -53,8 +53,7 @@ class GraphRAG:
         # Candidate Retrieval
         # (Cell 11A)
         # ==================================================
-
-          candidates = retrieve_candidates(
+        candidates = retrieve_candidates(
 
             graph_index=self.graph_index,
 
