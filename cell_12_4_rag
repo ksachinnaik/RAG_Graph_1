@@ -149,3 +149,9 @@ class GraphRAG:
         print(f"Edges : {retrieved_subgraph.number_of_edges()}")
 
         print()
+        # ==================================================
+        # Step 6
+        # Return Retrieval Package
+        # ==================================================
+
+        return retrieval_result
