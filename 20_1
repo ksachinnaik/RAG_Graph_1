@@ -96,3 +96,102 @@ display(top50_eval)
 print()
 
 display(top50_sources)
+
+
+
+
+cell 4--------------->
+
+# ==========================================================
+# Cell 4 : Extract Matching XML Documents
+# ==========================================================
+
+from pyspark.sql import functions as F
+
+# ----------------------------------------------------------
+# Read Raw XML Table
+# ----------------------------------------------------------
+
+RAW_TABLE = "knwbt_airr_foundry_dev_catalog.secured.knowbot_raw_data"
+
+raw_df = spark.table(RAW_TABLE)
+
+print("=" * 80)
+print("KNOWBOT RAW DATA")
+print("=" * 80)
+
+print(f"Total XML Documents : {raw_df.count()}")
+
+# ----------------------------------------------------------
+# Match XML Paths
+# ----------------------------------------------------------
+
+matched_xml = (
+
+    raw_df.alias("raw")
+
+    .join(
+
+        top50_sources.alias("eval"),
+
+        F.col("raw.source") == F.col("eval.source"),
+
+        "inner"
+
+    )
+
+)
+
+# ----------------------------------------------------------
+# Remove Duplicate XML Documents
+# ----------------------------------------------------------
+
+matched_xml = (
+
+    matched_xml
+
+    .dropDuplicates(["doc_id"])
+
+)
+
+# ----------------------------------------------------------
+# Select Required Columns
+# ----------------------------------------------------------
+
+matched_xml = (
+
+    matched_xml
+
+    .select(
+
+        "doc_id",
+
+        "title",
+
+        "content",
+
+        "reference",
+
+        "source",
+
+        "version",
+
+        "content_update_date",
+
+        "content_author"
+
+    )
+
+)
+
+print()
+
+print("=" * 80)
+print("MATCHED XML DOCUMENTS")
+print("=" * 80)
+
+print(f"Matched XML Documents : {matched_xml.count()}")
+
+print()
+
+display(matched_xml)
