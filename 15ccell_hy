@@ -1,0 +1,66 @@
+# ==========================================================
+# Cell 15 : Final Hybrid GraphRAG Answer
+# ==========================================================
+
+# ----------------------------------------------------------
+# Create LLM Context
+# ----------------------------------------------------------
+
+context = retrieval_result["graph_package"]
+
+# ----------------------------------------------------------
+# Generate Final Answer
+# ----------------------------------------------------------
+
+answer = generate_answer(
+
+    query=retrieval_result["query"],
+
+    graph_package=context
+
+)
+
+# ----------------------------------------------------------
+# Store Answer
+# ----------------------------------------------------------
+
+retrieval_result["answer"] = answer
+
+# ----------------------------------------------------------
+# Visualize Retrieved Subgraph
+# ----------------------------------------------------------
+
+print()
+print("=" * 90)
+print("RETRIEVED KNOWLEDGE SUBGRAPH")
+print("=" * 90)
+
+visualize_graph(
+
+    retrieval_result["retrieved_subgraph"]
+
+)
+
+# ----------------------------------------------------------
+# Display Question
+# ----------------------------------------------------------
+
+print()
+
+print("=" * 90)
+print("QUESTION")
+print("=" * 90)
+
+print(retrieval_result["query"])
+
+# ----------------------------------------------------------
+# Display Final Answer
+# ----------------------------------------------------------
+
+print()
+
+print("=" * 90)
+print("FINAL ANSWER")
+print("=" * 90)
+
+print(answer)
