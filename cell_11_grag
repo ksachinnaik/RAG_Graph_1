@@ -171,3 +171,195 @@ def retrieve_candidates(
         )
 
     return candidates[:top_k]
+
+
+
+# ==========================================================
+# Cell 11C : Build Knowledge Graph Package
+# ==========================================================
+
+def build_graph_package(
+    query,
+    graph,
+    retrieved_nodes
+):
+
+    print("=" * 80)
+    print("BUILDING KNOWLEDGE GRAPH PACKAGE")
+    print("=" * 80)
+
+    # ------------------------------------------------------
+    # Documents
+    # ------------------------------------------------------
+
+    documents = []
+    document_ids = set()
+
+    for item in retrieved_nodes:
+
+        node_id = item["doc_id"]
+
+        if node_id in document_ids:
+            continue
+
+        document_ids.add(node_id)
+
+        node = graph.nodes[node_id]
+
+        documents.append({
+
+            "doc_id": node_id,
+
+            "title": node.get("title", ""),
+
+            "reference": node.get("reference", ""),
+
+            "content": node.get("content", ""),
+
+            "search_text": node.get("search_text", ""),
+
+            "pagerank": item["pagerank"],
+
+            "degree": item["degree"],
+
+            "hop": item["hop"],
+
+            "parent": item["parent"],
+
+            "relation": item["relation"],
+
+            "score": item["score"]
+
+        })
+
+    # ------------------------------------------------------
+    # Sort Documents
+    # ------------------------------------------------------
+
+    documents = sorted(
+        documents,
+        key=lambda x: x["score"],
+        reverse=True
+    )
+
+    # ------------------------------------------------------
+    # Graph Relationships
+    # ------------------------------------------------------
+
+    relationships = []
+
+    for u, v, data in graph.edges(data=True):
+
+        if u in document_ids and v in document_ids:
+
+            relationships.append({
+
+                "source_id": u,
+
+                "source_title": graph.nodes[u].get("title", ""),
+
+                "target_id": v,
+
+                "target_title": graph.nodes[v].get("title", ""),
+
+                "relation": data.get("relation", "")
+
+            })
+
+    # ------------------------------------------------------
+    # Sort Relationships
+    # ------------------------------------------------------
+
+    relationships = sorted(
+
+        relationships,
+
+        key=lambda x: (
+            x["source_id"],
+            x["target_id"],
+            x["relation"]
+        )
+
+    )
+
+    # ------------------------------------------------------
+    # Graph Package
+    # ------------------------------------------------------
+
+    graph_package = {
+
+        "query": query,
+
+        "documents": documents,
+
+        "relationships": relationships,
+
+        "statistics": {
+
+            "documents": len(documents),
+
+            "relationships": len(relationships)
+
+        }
+
+    }
+
+    # ------------------------------------------------------
+    # Summary
+    # ------------------------------------------------------
+
+    print()
+    print("=" * 80)
+    print("GRAPH PACKAGE SUMMARY")
+    print("=" * 80)
+
+    print(f"Query               : {query}")
+    print(f"Retrieved Documents : {len(documents)}")
+    print(f"Relationships       : {len(relationships)}")
+
+    print()
+    print("=" * 80)
+    print("DOCUMENTS")
+    print("=" * 80)
+
+    for doc in documents:
+
+        print(
+
+            f'Doc:{doc["doc_id"]:4} '
+
+            f'Hop:{doc["hop"]} '
+
+            f'Score:{doc["score"]:8.2f} '
+
+            f'{doc["title"]}'
+
+        )
+
+    print()
+    print("=" * 80)
+    print("RELATIONSHIPS")
+    print("=" * 80)
+
+    for rel in relationships:
+
+        print(
+
+            f'{rel["source_id"]} '
+
+            f'({rel["source_title"]}) '
+
+            f'---{rel["relation"]}---> '
+
+            f'{rel["target_id"]} '
+
+            f'({rel["target_title"]})'
+
+        )
+
+    print()
+    print("=" * 80)
+    print("GRAPH PACKAGE READY")
+    print("=" * 80)
+
+    return graph_package
