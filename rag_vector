@@ -1,0 +1,41 @@
+# ==========================================================
+# Cell 10A : Initialize Databricks Embedding Model
+# ==========================================================
+
+from langchain_community.embeddings import DatabricksEmbeddings
+
+# ----------------------------------------------------------
+# Configuration
+# ----------------------------------------------------------
+
+EMBEDDING_ENDPOINT = "knwbt_text-embedding-3-small"
+
+# ----------------------------------------------------------
+# Load Embedding Model
+# ----------------------------------------------------------
+
+print("=" * 80)
+print("INITIALIZING DATABRICKS EMBEDDING MODEL")
+print("=" * 80)
+
+embedding_model = DatabricksEmbeddings(
+
+    endpoint=EMBEDDING_ENDPOINT
+
+)
+
+print()
+
+print(f"Embedding Endpoint : {EMBEDDING_ENDPOINT}")
+
+print()
+
+print("Status")
+print("------")
+print("✓ Embedding model initialized successfully")
+
+print()
+
+print("=" * 80)
+print("CELL 10A COMPLETED")
+print("=" * 80)
