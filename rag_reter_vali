@@ -307,11 +307,37 @@ def validate_retrieved_xml(
 # Run Validation
 # ==========================================================
 
-validation_summary = validate_retrieved_xml(
+retrieved_nodes = traverse_graph(
 
     graph=G,
 
-    retrieved_nodes=result["retrieved_nodes"],
+    candidates=retrieve_candidates(
+
+        graph_index=graph_index,
+
+        query=query,
+
+        top_k=10
+
+    ),
+
+    max_hops=2,
+
+    max_nodes=50
+
+)
+
+# ==================================================
+# Step 2A
+# Retrieved XML Validation
+# (Cell 11D)
+# ==================================================
+
+validation_summary = validate_retrieved_xml(
+
+    graph=self.graph,
+
+    retrieved_nodes=retrieved_nodes,
 
     all_links=all_links,
 
@@ -321,12 +347,13 @@ validation_summary = validate_retrieved_xml(
 
 print()
 
-print("=" * 100)
+print("=" * 80)
 print("VALIDATION REPORT")
-print("=" * 100)
+print("=" * 80)
 
 for key, value in validation_summary.items():
 
     print(f"{key:<28}: {value}")
 
-print("=" * 100)
+print("=" * 80)
+print()
