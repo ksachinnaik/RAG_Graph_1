@@ -1,0 +1,17 @@
+print("=" * 80)
+print("GRAPH INDEX")
+print("=" * 80)
+
+print(graph_index.columns)
+
+print()
+
+print(graph_index.iloc[0])
+
+print()
+
+print("=" * 80)
+print("SEARCH TEXT")
+print("=" * 80)
+
+print(graph_index.iloc[0]["search_text"])
