@@ -1,0 +1,393 @@
+# ==========================================================
+# Cell 11D : Retrieved XML Validation
+# Part 1 : Initialization
+# ==========================================================
+
+from collections import defaultdict
+
+# ==========================================================
+# Validate Retrieved XML
+# ==========================================================
+
+def validate_retrieved_xml(
+
+    graph,
+
+    retrieved_nodes,
+
+    all_links,
+
+    max_content_chars=3000
+
+):
+
+    print("=" * 100)
+    print("RETRIEVED XML VALIDATION")
+    print("=" * 100)
+
+    print(f"Retrieved XML Documents : {len(retrieved_nodes)}")
+    print()
+
+    # ------------------------------------------------------
+    # Statistics
+    # ------------------------------------------------------
+
+    total_doc_links = 0
+    total_wiki_links = 0
+    total_temp_links = 0
+
+    total_outgoing = 0
+    total_incoming = 0
+
+    # ------------------------------------------------------
+    # Iterate Through Retrieved XML Documents
+    # ------------------------------------------------------
+
+    for item in retrieved_nodes:
+
+        node_id = item["doc_id"]
+
+        if node_id not in graph:
+
+            continue
+
+        node = graph.nodes[node_id]
+
+        # --------------------------------------------------
+        # Metadata
+        # --------------------------------------------------
+
+        title = node.get("title", "")
+
+        reference = node.get("reference", "")
+
+        source_path = node.get("source_path", "")
+
+        content = node.get("content", "")
+
+        pagerank = item.get("pagerank", 0)
+
+        degree = item.get("degree", 0)
+
+        hop = item.get("hop", 0)
+
+        parent = item.get("parent", None)
+
+        relation = item.get("relation", "ROOT")
+
+        score = item.get("score", 0)
+
+        # --------------------------------------------------
+        # Limit Content Length
+        # --------------------------------------------------
+
+        if len(content) > max_content_chars:
+
+            content = (
+
+                content[:max_content_chars]
+
+                + "\n\n...... Content Truncated ......"
+
+            )
+
+        # --------------------------------------------------
+        # Group XML Links
+        # --------------------------------------------------
+
+        grouped_links = {
+
+            "doc": [],
+
+            "doc:wiki": [],
+
+            "doc:Temp_Import": []
+
+        }
+
+        xml_links = all_links.get(node_id, [])
+
+        for rel, ref in xml_links:
+
+            grouped_links.setdefault(rel, []).append(ref)
+
+        total_doc_links += len(grouped_links["doc"])
+
+        total_wiki_links += len(grouped_links["doc:wiki"])
+
+        total_temp_links += len(grouped_links["doc:Temp_Import"])
+        # --------------------------------------------------
+        # Document Information
+        # --------------------------------------------------
+
+        print("=" * 100)
+
+        print(f"Document ID : {node_id}")
+        print(f"Title       : {title}")
+        print(f"Reference   : {reference}")
+        print(f"Source Path : {source_path}")
+
+        print()
+
+        print(f"Hop         : {hop}")
+        print(f"Parent      : {parent}")
+        print(f"Relation    : {relation}")
+
+        print()
+
+        print(f"Degree      : {degree}")
+        print(f"PageRank    : {pagerank:.6f}")
+        print(f"Score       : {score:.2f}")
+
+        # --------------------------------------------------
+        # XML Content
+        # --------------------------------------------------
+
+        print()
+
+        print("-" * 100)
+        print(f"CONTENT (First {max_content_chars} Characters)")
+        print("-" * 100)
+
+        if content.strip():
+
+            print(content)
+
+        else:
+
+            print("No Content Available.")
+
+        print()
+        # --------------------------------------------------
+        # XML Links
+        # --------------------------------------------------
+
+        print("-" * 100)
+        print("XML LINKS")
+        print("-" * 100)
+
+        for relation_type in [
+
+            "doc",
+
+            "doc:wiki",
+
+            "doc:Temp_Import"
+
+        ]:
+
+            links = grouped_links.get(
+
+                relation_type,
+
+                []
+
+            )
+
+            print(f"\n{relation_type} ({len(links)})")
+            print("-" * 50)
+
+            if len(links) == 0:
+
+                print("No Links Found")
+
+            else:
+
+                for ref in sorted(links):
+
+                    print(f"  -> {ref}")
+
+        # --------------------------------------------------
+        # Outgoing Relationships
+        # --------------------------------------------------
+
+        print()
+        print("-" * 100)
+        print("OUTGOING GRAPH RELATIONSHIPS")
+        print("-" * 100)
+
+        outgoing_edges = list(
+
+            graph.out_edges(
+
+                node_id,
+
+                data=True
+
+            )
+
+        )
+
+        if len(outgoing_edges) == 0:
+
+            print("No Outgoing Relationships")
+
+        else:
+
+            total_outgoing += len(outgoing_edges)
+
+            for src, dst, edge_data in outgoing_edges:
+
+                relation_name = edge_data.get(
+
+                    "relation",
+
+                    "related_to"
+
+                )
+
+                dst_title = graph.nodes[dst].get(
+
+                    "title",
+
+                    ""
+
+                )
+
+                print(
+
+                    f"{src}"
+                    f" ({title}) "
+                    f"---{relation_name}---> "
+                    f"{dst}"
+                    f" ({dst_title})"
+
+                )
+
+        # --------------------------------------------------
+        # Incoming Relationships
+        # --------------------------------------------------
+
+        print()
+        print("-" * 100)
+        print("INCOMING GRAPH RELATIONSHIPS")
+        print("-" * 100)
+
+        incoming_edges = list(
+
+            graph.in_edges(
+
+                node_id,
+
+                data=True
+
+            )
+
+        )
+
+        if len(incoming_edges) == 0:
+
+            print("No Incoming Relationships")
+
+        else:
+
+            total_incoming += len(incoming_edges)
+
+            for src, dst, edge_data in incoming_edges:
+
+                relation_name = edge_data.get(
+
+                    "relation",
+
+                    "related_to"
+
+                )
+
+                src_title = graph.nodes[src].get(
+
+                    "title",
+
+                    ""
+
+                )
+
+                print(
+
+                    f"{src}"
+                    f" ({src_title}) "
+                    f"---{relation_name}---> "
+                    f"{dst}"
+                    f" ({title})"
+
+                )
+
+        print()
+        print("=" * 100)
+        print()
+    # ------------------------------------------------------
+    # Retrieval Validation Summary
+    # ------------------------------------------------------
+
+    print()
+    print("=" * 100)
+    print("RETRIEVAL VALIDATION SUMMARY")
+    print("=" * 100)
+
+    print(f"Retrieved XML Documents : {len(retrieved_nodes)}")
+    print(f"Total doc Links         : {total_doc_links}")
+    print(f"Total doc:wiki Links    : {total_wiki_links}")
+    print(f"Total Temp Links        : {total_temp_links}")
+
+    print()
+
+    print(f"Total Outgoing Relations : {total_outgoing}")
+    print(f"Total Incoming Relations : {total_incoming}")
+
+    print()
+
+    print("=" * 100)
+    print("RETRIEVED XML VALIDATION COMPLETED")
+    print("=" * 100)
+
+    # ------------------------------------------------------
+    # Return Validation Statistics
+    # ------------------------------------------------------
+
+    return {
+
+        "retrieved_documents": len(retrieved_nodes),
+
+        "doc_links": total_doc_links,
+
+        "wiki_links": total_wiki_links,
+
+        "temp_import_links": total_temp_links,
+
+        "outgoing_relationships": total_outgoing,
+
+        "incoming_relationships": total_incoming
+
+    }
+
+
+88888888888888
+
+# ==================================================
+# Step 2A
+# Retrieved XML Validation
+# ==================================================
+
+validation_summary = validate_retrieved_xml(
+
+    graph=self.graph,
+
+    retrieved_nodes=retrieved_nodes,
+
+    all_links=all_links,
+
+    max_content_chars=3000
+
+)
+
+print()
+
+print("=" * 80)
+print("VALIDATION REPORT")
+print("=" * 80)
+
+for key, value in validation_summary.items():
+
+    print(f"{key:<30}: {value}")
+
+print("=" * 80)
+print()
