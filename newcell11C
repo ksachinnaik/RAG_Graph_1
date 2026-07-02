@@ -1,0 +1,183 @@
+# ==========================================================
+# Cell 11C : Build Knowledge Graph Package (Updated)
+# ==========================================================
+
+def build_graph_package(query, graph, retrieved_nodes):
+
+    print("=" * 80)
+    print("BUILDING RETRIEVED KNOWLEDGE PACKAGE")
+    print("=" * 80)
+
+    documents = []
+    document_ids = set()
+
+    for item in retrieved_nodes:
+
+        node_id = item["doc_id"]
+
+        if node_id in document_ids:
+            continue
+
+        document_ids.add(node_id)
+
+        node = graph.nodes[node_id]
+
+        xml_links = all_links.get(node_id, [])
+
+        grouped_links = {
+            "doc": [],
+            "doc:wiki": [],
+            "doc:Temp_Import": []
+        }
+
+        for rel, ref in xml_links:
+            grouped_links.setdefault(rel, []).append(ref)
+
+        documents.append({
+            "doc_id": node_id,
+            "title": node.get("title",""),
+            "reference": node.get("reference",""),
+            "content": node.get("content",""),
+            "xml_links": grouped_links,
+            "pagerank": item["pagerank"],
+            "degree": item["degree"],
+            "hop": item["hop"],
+            "parent": item["parent"],
+            "relation": item["relation"],
+            "score": item["score"]
+        })
+
+    documents.sort(key=lambda x:x["score"], reverse=True)
+
+    relationships=[]
+
+    for u,v,data in graph.edges(data=True):
+        if u in document_ids and v in document_ids:
+            relationships.append({
+                "source_id":u,
+                "source_title":graph.nodes[u].get("title",""),
+                "target_id":v,
+                "target_title":graph.nodes[v].get("title",""),
+                "relation":data.get("relation","")
+            })
+
+    graph_package={
+        "query":query,
+        "documents":documents,
+        "relationships":relationships,
+        "statistics":{
+            "documents":len(documents),
+            "relationships":len(relationships)
+        }
+    }
+
+    print("\n"+"="*80)
+    print("RETRIEVED KNOWLEDGE")
+    print("="*80)
+
+    for doc in documents:
+        print(f"\nDocument ID : {doc['doc_id']}")
+        print(f"Title       : {doc['title']}")
+        print(f"Reference   : {doc['reference']}")
+        print(f"Hop         : {doc['hop']}")
+        print(f"Parent      : {doc['parent']}")
+        print(f"Relation    : {doc['relation']}")
+        print(f"Degree      : {doc['degree']}")
+        print(f"PageRank    : {doc['pagerank']:.6f}")
+        print(f"Score       : {doc['score']:.2f}")
+
+        print("\nContent")
+        print("-"*80)
+        print(doc["content"][:1200])
+
+        print("\nExtracted XML Links")
+        print("-"*80)
+
+        for key in ["doc","doc:wiki","doc:Temp_Import"]:
+            print(f"\n{key}")
+            if doc["xml_links"][key]:
+                for ref in doc["xml_links"][key]:
+                    print(f"  -> {ref}")
+            else:
+                print("  None")
+
+        print("\n"+"="*80)
+
+    print("\nRELATIONSHIPS")
+    print("="*80)
+
+    for rel in relationships:
+        print(f"{rel['source_id']} ({rel['source_title']}) ---{rel['relation']}---> {rel['target_id']} ({rel['target_title']})")
+
+    print("\nGRAPH PACKAGE READY")
+    print("="*80)
+
+    return graph_package
+
+
+##########################################################################################################
+
+# ----------------------------------------------------------
+# Build Prompt
+# ----------------------------------------------------------
+
+graph_package = result["graph_package"]
+
+document_context = ""
+
+for doc in graph_package["documents"]:
+
+    document_context += f"""
+==================================================
+Document ID : {doc['doc_id']}
+Title       : {doc['title']}
+Reference   : {doc['reference']}
+Hop         : {doc['hop']}
+Relation    : {doc['relation']}
+Parent      : {doc['parent']}
+
+Content
+--------------------------------------------------
+{doc['content'][:1200]}
+
+"""
+
+relationship_context = ""
+
+for rel in graph_package["relationships"]:
+
+    relationship_context += (
+        f"{rel['source_title']} "
+        f"---{rel['relation']}---> "
+        f"{rel['target_title']}\n"
+    )
+
+prompt = f"""
+You are an expert technical assistant.
+
+Answer ONLY using the retrieved Knowledge Graph.
+
+If the answer is not present, reply:
+
+'I could not find the answer in the retrieved Knowledge Graph.'
+
+==================================================
+Question
+==================================================
+
+{result["query"]}
+
+==================================================
+Retrieved Documents
+==================================================
+
+{document_context}
+
+==================================================
+Relationships
+==================================================
+
+{relationship_context}
+
+Provide a detailed technical answer.
+"""
